@@ -1,0 +1,115 @@
+letter: zero
+en: There are zero cookies left in the jar.
+zh: 罐子裡一塊餅乾也不剩了。
+
+letter: one
+en: I have one pencil in my bag.
+zh: 我的袋子裡有一支鉛筆。
+
+letter: two
+en: She has two brothers.
+zh: 她有兩個兄弟。
+
+letter: three
+en: We saw three cats in the park.
+zh: 我們在公園裡看到三隻貓。
+
+letter: four
+en: There are four chairs at the table.
+zh: 桌子旁邊有四張椅子。
+
+letter: five
+en: He can count to five.
+zh: 他可以數到五。
+
+letter: six
+en: I wake up at six o’clock every morning.
+zh: 我每天早上六點起床。
+
+letter: seven
+en: My class starts at seven thirty.
+zh: 我的課在七點半開始。
+
+letter: eight
+en: We have eight crayons in the box.
+zh: 盒子裡有八支蠟筆。
+
+letter: nine
+en: The baby is nine months old.
+zh: 這個嬰兒九個月大。
+
+letter: ten
+en: She can jump rope ten times.
+zh: 她可以跳繩十下。
+
+letter: eleven
+en: Eleven students are in the classroom.
+zh: 教室裡有十一個學生。
+
+letter: twelve
+en: It’s twelve o’clock now.
+zh: 現在是十二點整。
+
+letter: thirteen
+en: My cousin is thirteen years old.
+zh: 我表弟十三歲了。
+
+letter: fourteen
+en: There are fourteen apples on the tree.
+zh: 樹上有十四顆蘋果。
+
+letter: fifteen
+en: I want fifteen stickers.
+zh: 我想要十五張貼紙。
+
+letter: sixteen
+en: He is sixteen and in high school.
+zh: 他十六歲，是高中生。
+
+letter: seventeen
+en: I read seventeen pages of this book.
+zh: 我讀了這本書的十七頁。
+
+letter: eighteen
+en: My sister is eighteen today.
+zh: 我妹妹今天十八歲。
+
+letter: nineteen
+en: They bought nineteen balloons.
+zh: 他們買了十九個氣球。
+
+letter: twenty
+en: There are twenty desks in our classroom.
+zh: 我們教室裡有二十張書桌。
+
+letter: thirty
+en: The store opens at seven and closes at thirty past nine.
+zh: 商店七點開，九點半關。
+
+letter: forty
+en: My mom is forty years old.
+zh: 我媽媽四十歲。
+
+letter: fifty
+en: We have fifty students in our school.
+zh: 我們學校有五十位學生。
+
+letter: sixty
+en: Grandpa is sixty but still strong.
+zh: 爺爺六十歲，但仍然很強壯。
+
+letter: seventy
+en: My grandmother is seventy years old.
+zh: 我奶奶七十歲了。
+
+letter: eighty
+en: There are eighty books in the library.
+zh: 圖書館裡有八十本書。
+
+letter: ninety
+en: He can count from one to ninety.
+zh: 他可以從一數到九十。
+
+letter: hundred
+en: We planted one hundred flowers in the garden.
+zh: 我們在花園裡種了一百朵花。

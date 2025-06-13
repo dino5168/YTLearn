@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SRT 字幕播放器</title>
+    <style>
+        body {
+            font-family: 'Microsoft JhengHei', Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            font-weight: 300;
+        }
+
+        .upload-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px dashed #cbd5e0;
+            border-radius: 12px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .file-input {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            width: 100%;
+            font-size: 16px;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 12px;
+        }
+
+        .time-input {
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            width: 100px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+
+
+        .timeline {
+            margin: 20px 0;
+        }
+
+        .timeline-slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #e2e8f0;
+            outline: none;
+            cursor: pointer;
+            -webkit-appearance: none;
+        }
+
+        .timeline-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.5);
+        }
+
+        .time-display {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #718096;
+        }
+
+        .subtitle-list {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-top: 20px;
+            background: #f7fafc;
+            scroll-behavior: smooth;
+        }
+
+        .subtitle-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #e2e8f0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .subtitle-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .subtitle-item.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .subtitle-item .time {
+            font-size: 12px;
+            color: #718096;
+            margin-bottom: 5px;
+        }
+
+        .subtitle-item.active .time {
+            color: rgba(255, 255, 255, 0.8);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 SRT 字幕播放器</h1>
+        
+        <div class="upload-section">
+            <label for="srtFile">📁 選擇 SRT 字幕檔案：</label>
+            <input type="file" id="srtFile" class="file-input" accept=".srt" />
+        </div>
+
+        <div class="controls">
+            <label>⏰ 跳至時間：</label>
+            <input type="text" id="timeInput" class="time-input" placeholder="00:00:00" />
+            <button onclick="jumpToTime()">跳至</button>
+            <button onclick="togglePlay()">▶️ 播放</button>
+            <button onclick="resetTime()">🔄 重置</button>
+        </div>
+
+        <div class="timeline">
+            <input type="range" id="timelineSlider" class="timeline-slider" min="0" max="100" value="0" />
+            <div class="time-display">
+                <span id="currentTime">00:00:00</span>
+                <span id="totalTime">00:00:00</span>
+            </div>
+        </div>
+
+        <div class="subtitle-list" id="subtitleList" style="display: none;"></div>
+    </div>
+
+    <script>
+        let subtitles = [];
+        let currentTime = 0;
+        let isPlaying = false;
+        let playInterval;
+        let totalDuration = 0;
+
+        document.getElementById('srtFile').addEventListener('change', handleFileSelect);
+        document.getElementById('timelineSlider').addEventListener('input', handleTimelineChange);
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file && file.name.endsWith('.srt')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const srtContent = e.target.result;
+                    subtitles = parseSRT(srtContent);
+                    displaySubtitleList();
+                    resetTime();
+                    updateTotalTime();
+                    // 顯示字幕列表
+                    document.getElementById('subtitleList').style.display = 'block';
+                };
+                reader.readAsText(file, 'UTF-8');
+            }
+        }
+
+        function parseSRT(srtText) {
+            const blocks = srtText.trim().split(/\n\s*\n/);
+            return blocks.map(block => {
+                const lines = block.trim().split('\n');
+                if (lines.length >= 3) {
+                    const timeMatch = lines[1].match(/(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})/);
+                    if (timeMatch) {
+                        return {
+                            start: timeToSeconds(timeMatch[1]),
+                            end: timeToSeconds(timeMatch[2]),
+                            text: lines.slice(2).join('\n')
+                        };
+                    }
+                }
+                return null;
+            }).filter(Boolean);
+        }
+
+        function timeToSeconds(timeStr) {
+            const [time, ms] = timeStr.split(',');
+            const [hours, minutes, seconds] = time.split(':').map(Number);
+            return hours * 3600 + minutes * 60 + seconds + ms / 1000;
+        }
+
+        function secondsToTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function updateSubtitleDisplay() {
+            // 更新時間顯示
+            document.getElementById('currentTime').textContent = secondsToTime(currentTime);
+            
+            // 更新時間軸
+            const progress = totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0;
+            document.getElementById('timelineSlider').value = progress;
+
+            // 高亮當前字幕並自動捲動
+            updateSubtitleListHighlight();
+        }
+
+        function displaySubtitleList() {
+            const listContainer = document.getElementById('subtitleList');
+            listContainer.innerHTML = '';
+            
+            subtitles.forEach((subtitle, index) => {
+                const item = document.createElement('div');
+                item.className = 'subtitle-item';
+                item.innerHTML = `
+                    <div class="time">${secondsToTime(subtitle.start)} → ${secondsToTime(subtitle.end)}</div>
+                    <div>${subtitle.text}</div>
+                `;
+                item.onclick = () => jumpToSubtitle(subtitle.start);
+                listContainer.appendChild(item);
+            });
+        }
+
+        function updateSubtitleListHighlight() {
+            const items = document.querySelectorAll('.subtitle-item');
+            const listContainer = document.getElementById('subtitleList');
+            let activeItemIndex = -1;
+            
+            // 找到當前時間對應的字幕並設定樣式
+            items.forEach((item, index) => {
+                const subtitle = subtitles[index];
+                if (subtitle && currentTime >= subtitle.start && currentTime <= subtitle.end) {
+                    item.classList.add('active');
+                    item.style.background = 'linear-gradient(45deg, #667eea, #764ba2)';
+                    item.style.color = 'white';
+                    activeItemIndex = index;
+                } else {
+                    item.classList.remove('active');
+                    item.style.background = '';
+                    item.style.color = '';
+                }
+            });
+
+            // 自動捲動到當前字幕位置
+            if (activeItemIndex >= 0 && items.length > 0) {
+                const activeItem = items[activeItemIndex];
+                
+                // 簡化捲動邏輯
+                activeItem.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                    inline: 'nearest'
+                });
+            }
+        }
+
+        function jumpToSubtitle(time) {
+            currentTime = time;
+            updateSubtitleDisplay();
+        }
+
+        function togglePlay() {
+            const button = event.target;
+            if (isPlaying) {
+                clearInterval(playInterval);
+                isPlaying = false;
+                button.textContent = '▶️ 播放';
+            } else {
+                playInterval = setInterval(() => {
+                    currentTime += 0.1;
+                    updateSubtitleDisplay();
+                }, 100);
+                isPlaying = true;
+                button.textContent = '⏸️ 暫停';
+            }
+        }
+
+        function jumpToTime() {
+            const timeStr = document.getElementById('timeInput').value;
+            const timePattern = /^(\d{1,2}):(\d{2}):(\d{2})$/;
+            const match = timeStr.match(timePattern);
+            
+            if (match) {
+                const [, hours, minutes, seconds] = match;
+                currentTime = parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds);
+                updateSubtitleDisplay();
+            } else {
+                alert('請輸入正確的時間格式（HH:MM:SS）');
+            }
+        }
+
+        function resetTime() {
+            currentTime = 0;
+            if (isPlaying) {
+                clearInterval(playInterval);
+                isPlaying = false;
+                document.querySelector('button[onclick="togglePlay()"]').textContent = '▶️ 播放';
+            }
+            updateSubtitleDisplay();
+        }
+
+        function handleTimelineChange(event) {
+            const progress = event.target.value;
+            if (totalDuration > 0) {
+                currentTime = (progress / 100) * totalDuration;
+                updateSubtitleDisplay();
+            }
+        }
+
+        function updateTotalTime() {
+            if (subtitles.length > 0) {
+                totalDuration = Math.max(...subtitles.map(sub => sub.end));
+                document.getElementById('totalTime').textContent = secondsToTime(totalDuration);
+                document.getElementById('timelineSlider').max = 100;
+            }
+        }
+
+        // 初始化顯示
+        updateSubtitleDisplay();
+    </script>
+</body>
+</html>

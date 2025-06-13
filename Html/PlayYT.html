@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SRT 字幕播放器</title>
+    <style>
+      body {
+        font-family: "Microsoft JhengHei", Arial, sans-serif;
+        max-width: 1200px; /* 增加最大寬度以容納 YouTube 播放器 */
+        margin: 0 auto;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        color: #333;
+      }
+
+      .container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
+        display: flex; /* 使用 Flexbox 佈局 */
+        gap: 20px; /* 元素間距 */
+      }
+
+      .left-panel {
+        flex: 2; /* 左側面板佔用更多空間 */
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .right-panel {
+        flex: 1; /* 右側面板佔用較少空間 */
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      h1 {
+        text-align: center;
+        color: #4a5568;
+        margin-bottom: 30px;
+        font-size: 2.5rem;
+        font-weight: 300;
+      }
+
+      .upload-section {
+        margin-bottom: 30px;
+        padding: 20px;
+        border: 2px dashed #cbd5e0;
+        border-radius: 12px;
+        text-align: center;
+        transition: all 0.3s ease;
+      }
+
+      .upload-section:hover {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.05);
+      }
+
+      .file-input {
+        margin: 10px 0;
+        padding: 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        width: 100%;
+        font-size: 16px;
+      }
+
+      .controls {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin: 20px 0;
+        padding: 20px;
+        background: rgba(102, 126, 234, 0.1);
+        border-radius: 12px;
+      }
+
+      .time-input {
+        padding: 8px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 14px;
+        width: 100px;
+      }
+
+      button {
+        padding: 10px 20px;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        white-space: nowrap; /* 防止按鈕文字換行 */
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      .timeline {
+        margin: 20px 0;
+      }
+
+      .timeline-slider {
+        width: 100%;
+        height: 8px;
+        border-radius: 4px;
+        background: #e2e8f0;
+        outline: none;
+        cursor: pointer;
+        -webkit-appearance: none;
+      }
+
+      .timeline-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        cursor: pointer;
+        box-shadow: 0 2px 10px rgba(102, 126, 234, 0.5);
+      }
+
+      .time-display {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 10px;
+        font-size: 14px;
+        color: #718096;
+      }
+
+      .subtitle-list {
+        height: 400px;
+        overflow-y: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        margin-top: 20px;
+        background: #f7fafc;
+        scroll-behavior: smooth;
+      }
+
+      .subtitle-item {
+        padding: 10px 15px;
+        border-bottom: 1px solid #e2e8f0;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .subtitle-item:last-child {
+        border-bottom: none; /* 最後一個項目沒有下邊框 */
+      }
+
+      .subtitle-item:hover {
+        background: rgba(102, 126, 234, 0.1);
+      }
+
+      .subtitle-item.active {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+      }
+
+      .subtitle-item .time {
+        font-size: 12px;
+        color: #718096;
+        margin-bottom: 5px;
+      }
+
+      .subtitle-item.active .time {
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      .youtube-section {
+        margin-bottom: 20px;
+        padding: 20px;
+        border: 2px dashed #cbd5e0;
+        border-radius: 12px;
+        text-align: center;
+      }
+
+      .youtube-section input {
+        width: calc(100% - 22px); /* 調整輸入框寬度 */
+        padding: 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        margin-bottom: 10px;
+      }
+
+      #youtube-player {
+        width: 100%;
+        /* 計算寬高比以維持影片比例 */
+        aspect-ratio: 16 / 9; /* 16:9 比例 */
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="left-panel">
+        <h1>🎬 SRT 字幕播放器</h1>
+
+        <div class="youtube-section">
+          <label for="youtubeUrl">🔗 輸入 YouTube 影片網址：</label>
+          <input
+            type="text"
+            id="youtubeUrl"
+            placeholder="例如：https://www.youtube.com/watch?v=dQw4w9WgXcQ" />
+          <button onclick="loadYouTubeVideo()">載入影片</button>
+          <div id="youtube-player"></div>
+        </div>
+
+        <div class="controls">
+          <label>⏰ 跳至時間：</label>
+          <input
+            type="text"
+            id="timeInput"
+            class="time-input"
+            placeholder="00:00:00" />
+          <button onclick="jumpToTime()">跳至</button>
+          <button id="playPauseButton" onclick="togglePlay()">▶️ 播放</button>
+          <button onclick="resetTime()">🔄 重置</button>
+        </div>
+
+        <div class="timeline">
+          <input
+            type="range"
+            id="timelineSlider"
+            class="timeline-slider"
+            min="0"
+            max="100"
+            value="0" />
+          <div class="time-display">
+            <span id="currentTime">00:00:00</span>
+            <span id="totalTime">00:00:00</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="right-panel">
+        <div class="upload-section">
+          <label for="srtFile">📁 選擇 SRT 字幕檔案：</label>
+          <input type="file" id="srtFile" class="file-input" accept=".srt" />
+        </div>
+        <div
+          class="subtitle-list"
+          id="subtitleList"
+          style="display: none"></div>
+      </div>
+    </div>
+
+    <script>
+      let subtitles = [];
+      let player; // YouTube 播放器實例
+      let isPlaying = false;
+      let playInterval;
+      let totalDuration = 0;
+
+      // 載入 YouTube IFrame Player API
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      const firstScriptTag = document.getElementsByTagName("script")[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+      // 當 YouTube API 載入完成時會呼叫此函數
+      function onYouTubeIframeAPIReady() {
+        // 初始化播放器，但暫時不載入影片
+        player = new YT.Player("youtube-player", {
+          height: "360", // 預設高度，會在 CSS 中調整
+          width: "640", // 預設寬度，會在 CSS 中調整
+          videoId: "", // 初始不載入任何影片
+          events: {
+            onReady: onPlayerReady,
+            onStateChange: onPlayerStateChange,
+          },
+        });
+      }
+
+      function onPlayerReady(event) {
+        console.log("YouTube Player is ready.");
+        // 可以在這裡設定一些初始值，例如播放音量
+        // event.target.setVolume(100);
+      }
+
+      function onPlayerStateChange(event) {
+        const playPauseButton = document.getElementById("playPauseButton");
+        // 當播放器狀態改變時
+        if (event.data == YT.PlayerState.PLAYING) {
+          // 影片正在播放
+          isPlaying = true;
+          playPauseButton.textContent = "⏸️ 暫停";
+          // 開始每 100 毫秒更新一次字幕和時間軸
+          if (!playInterval) {
+            playInterval = setInterval(syncWithYouTubePlayer, 100);
+          }
+        } else {
+          // 影片暫停或結束
+          isPlaying = false;
+          playPauseButton.textContent = "▶️ 播放";
+          clearInterval(playInterval); // 停止更新
+          playInterval = null;
+        }
+        // 確保當播放器時間改變時，更新字幕顯示
+        updateSubtitleDisplay();
+      }
+
+      document
+        .getElementById("srtFile")
+        .addEventListener("change", handleFileSelect);
+      document
+        .getElementById("timelineSlider")
+        .addEventListener("input", handleTimelineChange);
+
+      function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (file && file.name.endsWith(".srt")) {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const srtContent = e.target.result;
+            subtitles = parseSRT(srtContent);
+            displaySubtitleList();
+            // 重置時間應由 YouTube 播放器決定
+            // resetTime();
+            updateTotalTime();
+            document.getElementById("subtitleList").style.display = "block";
+          };
+          reader.readAsText(file, "UTF-8");
+        }
+      }
+
+      function parseSRT(srtText) {
+        const blocks = srtText.trim().split(/\n\s*\n/);
+        return blocks
+          .map((block) => {
+            const lines = block.trim().split("\n");
+            if (lines.length >= 3) {
+              const timeMatch = lines[1].match(
+                /(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})/
+              );
+              if (timeMatch) {
+                return {
+                  start: timeToSeconds(timeMatch[1]),
+                  end: timeToSeconds(timeMatch[2]),
+                  text: lines.slice(2).join("\n"),
+                };
+              }
+            }
+            return null;
+          })
+          .filter(Boolean);
+      }
+
+      function timeToSeconds(timeStr) {
+        const [time, ms] = timeStr.split(",");
+        const [hours, minutes, seconds] = time.split(":").map(Number);
+        return hours * 3600 + minutes * 60 + seconds + (ms ? ms / 1000 : 0); // 確保 ms 存在
+      }
+
+      function secondsToTime(seconds) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${hours.toString().padStart(2, "0")}:${minutes
+          .toString()
+          .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+      }
+
+      // 使用 YouTube 播放器的時間更新字幕顯示
+      function syncWithYouTubePlayer() {
+        if (player && player.getCurrentTime) {
+          currentTime = player.getCurrentTime();
+          updateSubtitleDisplay();
+          // 如果影片播放結束，停止更新並重置播放器狀態
+          if (player.getPlayerState() === YT.PlayerState.ENDED) {
+            clearInterval(playInterval);
+            playInterval = null;
+            isPlaying = false;
+            document.getElementById("playPauseButton").textContent = "▶️ 播放";
+          }
+        }
+      }
+
+      function updateSubtitleDisplay() {
+        document.getElementById("currentTime").textContent =
+          secondsToTime(currentTime);
+
+        const progress =
+          totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0;
+        document.getElementById("timelineSlider").value = progress;
+
+        updateSubtitleListHighlight();
+      }
+
+      function displaySubtitleList() {
+        const listContainer = document.getElementById("subtitleList");
+        listContainer.innerHTML = "";
+
+        subtitles.forEach((subtitle, index) => {
+          const item = document.createElement("div");
+          item.className = "subtitle-item";
+          item.innerHTML = `
+                    <div class="time">${secondsToTime(
+                      subtitle.start
+                    )} → ${secondsToTime(subtitle.end)}</div>
+                    <div>${subtitle.text}</div>
+                `;
+          item.onclick = () => jumpToSubtitle(subtitle.start);
+          listContainer.appendChild(item);
+        });
+      }
+
+      function updateSubtitleListHighlight() {
+        const items = document.querySelectorAll(".subtitle-item");
+        let activeItemFound = false; // 用來標記是否找到活躍字幕
+
+        items.forEach((item, index) => {
+          const subtitle = subtitles[index];
+          if (
+            subtitle &&
+            currentTime >= subtitle.start &&
+            currentTime < subtitle.end
+          ) {
+            // 使用 < 避免結束時間重複高亮
+            if (!item.classList.contains("active")) {
+              // 避免重複操作 DOM
+              item.classList.add("active");
+              item.style.background =
+                "linear-gradient(45deg, #667eea, #764ba2)";
+              item.style.color = "white";
+              activeItemFound = true;
+              // 滾動到活躍字幕
+              item.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+                inline: "nearest",
+              });
+            }
+          } else {
+            if (item.classList.contains("active")) {
+              // 避免重複操作 DOM
+              item.classList.remove("active");
+              item.style.background = "";
+              item.style.color = "";
+            }
+          }
+        });
+      }
+
+      function jumpToSubtitle(time) {
+        if (player && player.seekTo) {
+          player.seekTo(time, true); // 跳轉 YouTube 影片時間
+          // currentTime 會由 onPlayerStateChange 透過 syncWithYouTubePlayer 自動更新
+        } else {
+          currentTime = time; // 如果沒有 YouTube 播放器，則僅更新本地時間
+          updateSubtitleDisplay();
+        }
+      }
+
+      function togglePlay() {
+        if (!player) {
+          alert("請先載入 YouTube 影片。");
+          return;
+        }
+
+        if (isPlaying) {
+          player.pauseVideo();
+        } else {
+          player.playVideo();
+        }
+        // onPlayerStateChange 會處理 isPlaying 和按鈕文字更新
+      }
+
+      function jumpToTime() {
+        const timeStr = document.getElementById("timeInput").value;
+        const timePattern = /^(\d{1,2}):(\d{2}):(\d{2})$/;
+        const match = timeStr.match(timePattern);
+
+        if (match) {
+          const [, hours, minutes, seconds] = match;
+          const targetTime =
+            parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds);
+          jumpToSubtitle(targetTime); // 跳轉到指定時間
+        } else {
+          alert("請輸入正確的時間格式（HH:MM:SS）");
+        }
+      }
+
+      function resetTime() {
+        if (player && player.seekTo) {
+          player.seekTo(0, true); // 將 YouTube 影片跳轉到 0
+          player.pauseVideo(); // 暫停影片
+        }
+        currentTime = 0; // 重置本地時間
+        clearInterval(playInterval);
+        playInterval = null;
+        isPlaying = false;
+        document.getElementById("playPauseButton").textContent = "▶️ 播放";
+        updateSubtitleDisplay();
+      }
+
+      function handleTimelineChange(event) {
+        const progress = event.target.value;
+        if (totalDuration > 0) {
+          const targetTime = (progress / 100) * totalDuration;
+          if (player && player.seekTo) {
+            player.seekTo(targetTime, true);
+          } else {
+            currentTime = targetTime;
+            updateSubtitleDisplay();
+          }
+        }
+      }
+
+      function updateTotalTime() {
+        if (player && player.getDuration) {
+          totalDuration = player.getDuration();
+        } else if (subtitles.length > 0) {
+          totalDuration = Math.max(...subtitles.map((sub) => sub.end));
+        }
+        document.getElementById("totalTime").textContent =
+          secondsToTime(totalDuration);
+        document.getElementById("timelineSlider").max = 100;
+      }
+
+      // 載入 YouTube 影片
+      function loadYouTubeVideo() {
+        const youtubeUrl = document.getElementById("youtubeUrl").value;
+        let videoId = "";
+
+        // 嘗試從各種 YouTube 網址格式中提取 video ID
+        const regExp =
+          /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+        const match = youtubeUrl.match(regExp);
+        if (match && match[1]) {
+          videoId = match[1];
+        }
+
+        if (videoId) {
+          if (player) {
+            player.loadVideoById(videoId);
+            updateTotalTime(); // 載入新影片後更新總時長
+          } else {
+            // 如果 player 還沒初始化，這表示 onYouTubeIframeAPIReady 還沒被呼叫
+            // 理論上不會發生，因為 script 標籤是同步載入的
+            console.error("YouTube Player not initialized.");
+          }
+        } else {
+          alert("請輸入有效的 YouTube 影片網址。");
+        }
+      }
+
+      // 初始化顯示
+      updateSubtitleDisplay();
+    </script>
+  </body>
+</html>
