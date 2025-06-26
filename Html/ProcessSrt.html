@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SRT 句子合併工具</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .container {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #333;
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .input-section,
+      .output-section {
+        margin-bottom: 30px;
+      }
+      label {
+        display: block;
+        margin-bottom: 10px;
+        font-weight: bold;
+        color: #555;
+      }
+      textarea {
+        width: 100%;
+        height: 300px;
+        padding: 10px;
+        border: 2px solid #ddd;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 14px;
+        resize: vertical;
+      }
+      button {
+        background-color: #007bff;
+        color: white;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        margin: 10px 5px;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      .download-btn {
+        background-color: #28a745;
+      }
+      .download-btn:hover {
+        background-color: #1e7e34;
+      }
+      .stats {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 4px;
+        margin: 15px 0;
+        border-left: 4px solid #007bff;
+      }
+      .example {
+        background-color: #e9ecef;
+        padding: 15px;
+        border-radius: 4px;
+        margin: 15px 0;
+        font-family: monospace;
+        font-size: 12px;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>SRT 句子合併工具</h1>
+      <p>
+        此工具會將以句號(.)、驚嘆號(!)、問號(?)結尾的完整句子合併成一個時間軸區段。
+      </p>
+
+      <div class="input-section">
+        <label for="inputSrt">輸入 SRT 內容：</label>
+        <textarea id="inputSrt" placeholder="請貼上您的 SRT 內容..."></textarea>
+        <button onclick="loadExample()">載入範例</button>
+        <button onclick="processSrt()">處理 SRT</button>
+      </div>
+
+      <div class="stats" id="stats" style="display: none">
+        <strong>處理統計：</strong>
+        <div id="statsContent"></div>
+      </div>
+
+      <div class="output-section">
+        <label for="outputSrt">合併後的 SRT：</label>
+        <textarea id="outputSrt" readonly></textarea>
+        <button
+          class="download-btn"
+          onclick="downloadSrt()"
+          id="downloadBtn"
+          style="display: none">
+          下載 SRT 檔案
+        </button>
+      </div>
+
+      <div class="example">
+        <strong>使用說明：</strong>
+        1. 將您的 SRT 內容貼到上方文字框 2. 點擊「處理 SRT」按鈕 3.
+        工具會自動識別以 . ! ? 結尾的句子並合併時間軸 4. 下載處理後的 SRT 檔案
+
+        <strong>合併規則：</strong>
+        - 句子結尾符號：. ! ? - 保持原始時間軸的開始時間 -
+        使用最後一個片段的結束時間 - 自動重新編號
+      </div>
+    </div>
+
+    <script>
+      function loadExample() {
+        const exampleSrt = `1
+00:00:00,000 --> 00:00:02,380
+Hey There! Welcome to Life Noggin!
+
+2
+00:00:02,680 --> 00:00:07,040
+Technology and innovation are coming full
+speed towards us from so many directions all
+
+3
+00:00:07,040 --> 00:00:09,120
+over the world.
+
+4
+00:00:09,120 --> 00:00:12,330
+But, Which Country Has The Best Technology?
+
+5
+00:00:12,330 --> 00:00:15,870
+Each country in this global tech race has
+something special to offer.`;
+
+        document.getElementById("inputSrt").value = exampleSrt;
+      }
+
+      function processSrt() {
+        const input = document.getElementById("inputSrt").value.trim();
+        if (!input) {
+          alert("請輸入 SRT 內容");
+          return;
+        }
+
+        try {
+          const result = mergeSrtSentences(input);
+          document.getElementById("outputSrt").value = result.srt;
+
+          // 顯示統計資訊
+          const statsDiv = document.getElementById("stats");
+          const statsContent = document.getElementById("statsContent");
+          statsContent.innerHTML = `
+                    原始字幕條目：${result.originalCount} 條<br>
+                    合併後條目：${result.newCount} 條<br>
+                    減少了：${result.originalCount - result.newCount} 條 (${(
+            ((result.originalCount - result.newCount) / result.originalCount) *
+            100
+          ).toFixed(1)}%)
+                `;
+          statsDiv.style.display = "block";
+
+          document.getElementById("downloadBtn").style.display = "inline-block";
+        } catch (error) {
+          alert("處理 SRT 時發生錯誤：" + error.message);
+        }
+      }
+
+      function mergeSrtSentences(srtContent) {
+        // 解析 SRT 內容
+        const entries = parseSrt(srtContent);
+        const mergedEntries = [];
+
+        let currentGroup = [];
+        let groupStartTime = "";
+        let groupEndTime = "";
+        let groupText = "";
+
+        for (let i = 0; i < entries.length; i++) {
+          const entry = entries[i];
+
+          if (currentGroup.length === 0) {
+            // 開始新的組
+            groupStartTime = entry.startTime;
+            currentGroup = [entry];
+            groupText = entry.text;
+            groupEndTime = entry.endTime;
+          } else {
+            // 添加到當前組
+            currentGroup.push(entry);
+            groupText += " " + entry.text;
+            groupEndTime = entry.endTime;
+          }
+
+          // 檢查是否為句子結尾
+          const trimmedText = groupText.trim();
+          const endsWithSentence =
+            /[.!?]$/.test(trimmedText) || /[.!?]\s*["']?$/.test(trimmedText);
+
+          if (endsWithSentence || i === entries.length - 1) {
+            // 完成當前組
+            mergedEntries.push({
+              startTime: groupStartTime,
+              endTime: groupEndTime,
+              text: groupText.trim(),
+            });
+
+            // 重置
+            currentGroup = [];
+            groupText = "";
+          }
+        }
+
+        // 生成新的 SRT
+        let result = "";
+        mergedEntries.forEach((entry, index) => {
+          result += `${index + 1}\n`;
+          result += `${entry.startTime} --> ${entry.endTime}\n`;
+          result += `${entry.text}\n\n`;
+        });
+
+        return {
+          srt: result.trim(),
+          originalCount: entries.length,
+          newCount: mergedEntries.length,
+        };
+      }
+
+      function parseSrt(srtContent) {
+        const entries = [];
+        const blocks = srtContent
+          .split(/\n\s*\n/)
+          .filter((block) => block.trim());
+
+        blocks.forEach((block) => {
+          const lines = block.trim().split("\n");
+          if (lines.length >= 3) {
+            const timeLine = lines[1];
+            const timeMatch = timeLine.match(
+              /(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})/
+            );
+
+            if (timeMatch) {
+              const text = lines.slice(2).join(" ").trim();
+              entries.push({
+                startTime: timeMatch[1],
+                endTime: timeMatch[2],
+                text: text,
+              });
+            }
+          }
+        });
+
+        return entries;
+      }
+
+      function downloadSrt() {
+        const content = document.getElementById("outputSrt").value;
+        if (!content) {
+          alert("沒有內容可下載");
+          return;
+        }
+
+        const blob = new Blob([content], {type: "text/plain;charset=utf-8"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "merged_subtitles.srt";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    </script>
+  </body>
+</html>

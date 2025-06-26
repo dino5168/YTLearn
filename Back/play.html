@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小魚和魔法書</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft JhengHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .title {
+            text-align: center;
+            color: #4a5568;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .story-display {
+            background: linear-gradient(135deg, #ffeaa7, #fab1a0);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .story-text {
+            font-size: 1.8em;
+            line-height: 1.4;
+            color: #2d3436;
+            max-width: 100%;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+            font-weight: 500;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .story-text.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .play-button {
+            background: linear-gradient(135deg, #00cec9, #55a3ff);
+            border: none;
+            border-radius: 50px;
+            padding: 15px 30px;
+            color: white;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .play-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .play-button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress-container {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            height: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background: linear-gradient(90deg, #00cec9, #55a3ff);
+            height: 100%;
+            width: 0%;
+            transition: width 0.1s ease;
+            border-radius: 10px;
+        }
+
+        .time-display {
+            text-align: center;
+            color: #636e72;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+
+        .file-input-container {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        .file-input {
+            margin-bottom: 10px;
+        }
+
+        .file-label {
+            color: #636e72;
+            font-size: 1.1em;
+        }
+
+        .current-segment {
+            text-align: center;
+            color: #00cec9;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .container {
+            animation: fadeIn 0.8s ease;
+        }
+
+        .segment-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .segment-item {
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            font-size: 0.9em;
+        }
+
+        .segment-item:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .segment-item.active {
+            background: linear-gradient(135deg, #00cec9, #55a3ff);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">🐟 小魚和魔法書 📚</h1>
+        
+        <div class="file-input-container">
+            <div class="file-label">請選擇您的 fish.mp3 檔案：</div>
+            <input type="file" id="audioFile" class="file-input" accept="audio/*">
+        </div>
+
+        <div class="story-display">
+            <div class="story-text" id="storyText">
+                點擊播放按鈕開始聆聽小魚的魔法冒險故事！✨
+            </div>
+        </div>
+
+        <div class="current-segment" id="currentSegment"></div>
+
+        <div class="controls">
+            <button class="play-button" id="playButton" disabled>載入音檔後開始播放</button>
+        </div>
+
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <div class="time-display" id="timeDisplay">00:00 / 00:00</div>
+
+        <div class="segment-list" id="segmentList"></div>
+
+        <audio id="audioPlayer" style="display: none;"></audio>
+    </div>
+
+    <script>
+        // 故事文字時間軸 (根據SRT字幕格式)
+        const storySegments = [
+            { time: 0, text: "小魚和魔法書從前從前 🐟📚" },
+            { time: 3, text: "在彩虹森林的邊邊 🌈🌲" },
+            { time: 5, text: "有一間用糖果做成的房子 🏠🍭" },
+            { time: 7, text: "住著一個叫小魚的小女孩 👧✨" },
+            { time: 10, text: "小魚最喜歡看書 📖💕" },
+            { time: 12, text: "尤其是關於魔法的書 🔮📚" },
+            { time: 15, text: "有一天 ☀️" },
+            { time: 16, text: "小魚在書洞裡發現了一本發亮的書 ✨📖" },
+            { time: 19, text: "書背上寫著 📝" },
+            { time: 20, text: "只有善良有勇敢的小孩 💝🦸‍♀️" },
+            { time: 23, text: "才能打開這本魔法書 🔓📚" },
+            { time: 25, text: "小魚小心翼翼的打開書 👐📖" },
+            { time: 28, text: "突然「噗」 💨" },
+            { time: 29, text: "的一聲 🔊" },
+            { time: 30, text: "一隻說話的貓從書裡跳出來 🐱💫" },
+            { time: 33, text: "「你好 👋" },
+            { time: 33, text: "我是魔法貓咪阿奇 🐱‍⚡" },
+            { time: 35, text: "你剛才啟動了魔法任務」 🎯✨" },
+            { time: 38, text: "「什麼任務？」 ❓" },
+            { time: 39, text: "小魚瞪大眼睛 👀" },
+            { time: 41, text: "阿奇說 🗣️" },
+            { time: 42, text: "「森林裡的彩虹花被惡作劇精靈 🌈🧚‍♂️" },
+            { time: 45, text: "偷走了 😤" },
+            { time: 46, text: "沒有彩虹花 🌸💔" },
+            { time: 47, text: "動物們就會失去笑容 😢🦌" },
+            { time: 49, text: "你願意幫忙找回它們嗎？」 🤝💪" },
+            { time: 52, text: "小魚點點頭 👧✨" },
+            { time: 53, text: "「我願意」 💪❤️" },
+            { time: 55, text: "阿奇送給小魚一支魔法鉛筆 ✏️🎁" },
+            { time: 58, text: "「你只要畫出你想要的東西 🎨" },
+            { time: 60, text: "就會變出來」 ✨🎭" },
+            { time: 62, text: "小魚畫了一隻小飛馬 🦄🎨" },
+            { time: 64, text: "他們騎著飛馬 🦄👧" },
+            { time: 65, text: "飛過雲朵穿過河流 ☁️🌊" },
+            { time: 68, text: "翻過山丘 ⛰️" },
+            { time: 69, text: "終於找到了惡作劇精靈 🧚‍♂️🎯" },
+            { time: 72, text: "「精靈先生 🧚‍♂️" },
+            { time: 73, text: "彩虹花是大家的快樂來源 🌈😊" },
+            { time: 76, text: "請你還給我們吧」 🙏💝" },
+            { time: 78, text: "小魚說得有禮貌又勇敢 👧💪" },
+            { time: 80, text: "精靈看看小魚 👀" },
+            { time: 82, text: "低下頭說 😔" },
+            { time: 83, text: "「對不起 😞" },
+            { time: 84, text: "我只是太孤單了 💔" },
+            { time: 85, text: "想引起大家注意」 😢👥" },
+            { time: 87, text: "小魚笑了說 😊" },
+            { time: 89, text: "「那我們可以當你的朋友 🤝💕" },
+            { time: 91, text: "但你要先把彩虹花還回來」 🌈🔄" },
+            { time: 94, text: "精靈開心的答應了 😄✅" },
+            { time: 96, text: "從那天開始 🌅" },
+            { time: 97, text: "森林裡多了一位 🌲+" },
+            { time: 98, text: "改過自新的精靈朋友 🧚‍♂️💚" },
+            { time: 101, text: "也多了更多的歡笑聲 😄🎵" }
+        ];
+
+        let audio = null;
+        let isPlaying = false;
+        let currentSegmentIndex = -1;
+
+        const audioFileInput = document.getElementById('audioFile');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const playButton = document.getElementById('playButton');
+        const storyText = document.getElementById('storyText');
+        const progressBar = document.getElementById('progressBar');
+        const timeDisplay = document.getElementById('timeDisplay');
+        const currentSegment = document.getElementById('currentSegment');
+        const segmentList = document.getElementById('segmentList');
+
+        // 初始化片段列表
+        function initSegmentList() {
+            segmentList.innerHTML = '';
+            storySegments.forEach((segment, index) => {
+                const item = document.createElement('div');
+                item.className = 'segment-item';
+                item.innerHTML = `[${formatTime(segment.time)}] ${segment.text}`;
+                item.onclick = () => seekToSegment(index);
+                segmentList.appendChild(item);
+            });
+        }
+
+        // 載入音檔
+        audioFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                audioPlayer.src = url;
+                audioPlayer.load();
+                playButton.disabled = false;
+                playButton.textContent = '▶️ 開始播放';
+                initSegmentList();
+            }
+        });
+
+        // 播放/暫停功能
+        playButton.addEventListener('click', function() {
+            if (!audioPlayer.src) return;
+
+            if (isPlaying) {
+                audioPlayer.pause();
+                playButton.textContent = '▶️ 繼續播放';
+                isPlaying = false;
+            } else {
+                audioPlayer.play();
+                playButton.textContent = '⏸️ 暫停';
+                isPlaying = true;
+            }
+        });
+
+        // 跳轉到指定片段
+        function seekToSegment(index) {
+            if (!audioPlayer.src) return;
+            audioPlayer.currentTime = storySegments[index].time;
+            updateStoryDisplay(index);
+        }
+
+        // 更新故事顯示
+        function updateStoryDisplay(segmentIndex) {
+            if (segmentIndex !== currentSegmentIndex) {
+                currentSegmentIndex = segmentIndex;
+                
+                // 更新文字顯示
+                storyText.classList.remove('active');
+                setTimeout(() => {
+                    storyText.textContent = storySegments[segmentIndex].text;
+                    storyText.classList.add('active');
+                }, 200);
+
+                // 更新當前片段顯示
+                currentSegment.textContent = `第 ${segmentIndex + 1} 段 / 共 ${storySegments.length} 段`;
+
+                // 更新片段列表高亮
+                document.querySelectorAll('.segment-item').forEach((item, index) => {
+                    item.classList.toggle('active', index === segmentIndex);
+                });
+            }
+        }
+
+        // 時間格式化
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // 音頻時間更新
+        audioPlayer.addEventListener('timeupdate', function() {
+            const currentTime = audioPlayer.currentTime;
+            const duration = audioPlayer.duration;
+
+            // 更新進度條
+            if (duration) {
+                const progress = (currentTime / duration) * 100;
+                progressBar.style.width = progress + '%';
+                timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`;
+            }
+
+            // 根據當前時間更新文字顯示
+            for (let i = storySegments.length - 1; i >= 0; i--) {
+                if (currentTime >= storySegments[i].time) {
+                    updateStoryDisplay(i);
+                    break;
+                }
+            }
+        });
+
+        // 音頻結束時重置
+        audioPlayer.addEventListener('ended', function() {
+            isPlaying = false;
+            playButton.textContent = '🔄 重新播放';
+            progressBar.style.width = '0%';
+            storyText.classList.remove('active');
+            setTimeout(() => {
+                storyText.textContent = '故事結束了！小魚的冒險真精彩呢！✨';
+                storyText.classList.add('active');
+            }, 200);
+        });
+
+        // 初始化
+        initSegmentList();
+        storyText.classList.add('active');
+    </script>
+</body>
+</html>
