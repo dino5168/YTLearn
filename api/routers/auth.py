@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends, Request, Query
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from sqlalchemy.orm import Session
 from google.oauth2 import id_token as google_id_token
 from google.auth.transport import requests as google_requests
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import jwt
 import requests
 
@@ -39,14 +39,15 @@ class LoginResponse(BaseModel):
     user: dict
 
 
-def create_access_token(data: dict, expires_delta: timedelta = None):
-    print("create_access_token01")
+# 取得 jwt token
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(hours=JWT_EXPIRE_HOURS))
-    to_encode.update({"exp": expire, "iat": datetime.utcnow()})
-    print("create_access_token02")
+    now = datetime.now(timezone.utc)  # ✅ 附帶 UTC 時區資訊的 datetime 物件
+    expire = now + (expires_delta or timedelta(hours=JWT_EXPIRE_HOURS))
+    # 明確設定 exp, iat, nbf 為同一時間 會有延遲問題 如果使用者 在一秒內執行登入登出 加入 2s delay
+    to_encode.update({"exp": expire, "iat": now, "nbf": now - timedelta(seconds=2)})
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
-    print("create_access_token03")
     return encoded_jwt
 
 
@@ -147,6 +148,7 @@ def google_callback(request: Request, db: Session = Depends(get_db)):
             "user_id": user.id,
             "email": user.email,
             "name": user.name,
+            "avatar_url": avatar_url,
             "sub": str(user.id),
         }
         jwt_token = create_access_token(data=token_data)
@@ -169,6 +171,7 @@ def google_callback(request: Request, db: Session = Depends(get_db)):
 @auth_router.post("/verify")
 def verify_token(request: Request):
     """驗證 JWT token"""
+    print("驗證 JWT token")
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid authorization header")
@@ -185,6 +188,14 @@ def verify_token(request: Request):
 
 
 @auth_router.post("/logout")
-def logout():
+def logout(response: Response):
     """登出（前端需要清除 token）"""
+    """
+    登出 - 從後端角度來說，告訴前端要清除 token。
+    也可以直接清除 httpOnly cookie (如果你是用 cookie 存 token)。
+    """
+
+    # 如果你是用 httpOnly cookie 存 token，可以這樣清除 cookie：
+    response.delete_cookie(key="auth_token")
+
     return {"message": "Logged out successfully"}
