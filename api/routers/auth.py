@@ -13,7 +13,7 @@ from lib_auth.jwt_utils import create_jwt
 # User
 from lib_db.schemas.User import UserRead  # Pydantic Schema
 from lib_db.models.User import User
-from lib_db.db.get_db import get_db
+from lib_db.db.database import get_db
 from pydantic import BaseModel
 from urllib.parse import urlencode
 
@@ -46,7 +46,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     now = datetime.now(timezone.utc)  # ✅ 附帶 UTC 時區資訊的 datetime 物件
     expire = now + (expires_delta or timedelta(hours=JWT_EXPIRE_HOURS))
     # 明確設定 exp, iat, nbf 為同一時間 會有延遲問題 如果使用者 在一秒內執行登入登出 加入 2s delay
-    to_encode.update({"exp": expire, "iat": now, "nbf": now - timedelta(seconds=2)})
+    to_encode.update({"exp": expire, "iat": now, "nbf": now - timedelta(seconds=5)})
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
     return encoded_jwt
 
@@ -129,7 +129,7 @@ def google_callback(request: Request, db: Session = Depends(get_db)):
                 google_id=google_id,
                 avatar_url=avatar_url,
                 is_active=True,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(),
             )
             db.add(user)
             db.commit()
@@ -138,7 +138,7 @@ def google_callback(request: Request, db: Session = Depends(get_db)):
             user.name = name
             user.avatar_url = avatar_url
             user.google_id = google_id
-            user.last_login = datetime.utcnow()
+            user.last_login = datetime.now()
             db.commit()
 
         # 產生 JWT

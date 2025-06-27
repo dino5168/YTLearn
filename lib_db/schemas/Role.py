@@ -18,8 +18,10 @@ class RoleUpdate(BaseModel):
     description: Optional[str] = None
 
 
-class RoleRead(RoleBase):
+class RoleRead(BaseModel):
     id: int
+    name: str
+    description: str | None = None  # description 是可選的
 
     class Config:
         orm_mode = True
