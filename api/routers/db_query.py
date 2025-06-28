@@ -6,7 +6,7 @@ from lib_db.schemas.User import UserRead  # Pydantic Schema
 from lib_db.models.User import User
 
 # Role
-from lib_db.models.Role import Role
+from lib_db.models.role import Role
 from lib_db.schemas.Role import RoleRead
 
 from lib_db.db.database import get_db

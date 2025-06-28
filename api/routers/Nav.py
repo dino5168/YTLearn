@@ -3,27 +3,19 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
 from lib_db.db.database import SessionLocal
-from lib_db.models.nav_items_roles import NavItem, NavDropdown
-from lib_db.models.Role import Role
+from lib_db.models.nav_item import NavItem
+from lib_db.models.nav_dropdown import NavDropdown
+from lib_db.models.role import Role
 from lib_db.schemas.nav import NavItemCreate, NavItemRead, NavItemUpdate
-from lib_db.schemas.nav import NavDropdownCreate, NavDropdownRead
+from lib_db.schemas.nav import NavDropdownCreate, NavDropdownRead, NavDropdownUpdate
 from typing import List
+from lib_util.Auth import get_current_user  # Import the dependency
+from lib_db.models.User import User
+from lib_db.db.database import get_db
 import logging
 
 nav_router = APIRouter(prefix="/nav", tags=["Navigation"])
 logger = logging.getLogger(__name__)
-
-
-# Dependency with better error handling
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    except Exception:
-        db.rollback()
-        raise
-    finally:
-        db.close()
 
 
 # 取得所有主選單（含 dropdown 與角色 id）
@@ -175,11 +167,34 @@ def get_nav_links(db: Session = Depends(get_db)):
             try:
                 if item.dropdowns:
                     dropdown = [
-                        {"label": d.label, "href": d.href} for d in item.dropdowns
+                        {
+                            "label": d.label,
+                            "href": d.href,
+                            "type": "1",
+                            "id": d.id,
+                            "nav_item_id": d.nav_item_id,
+                        }
+                        for d in item.dropdowns
                     ]
-                    result.append({"label": item.label, "dropdown": dropdown})
+                    result.append(
+                        {
+                            "label": item.label,
+                            "id": item.id,
+                            "type": "0",
+                            "nav_item_id": "0",
+                            "dropdown": dropdown,
+                        }
+                    )
                 else:
-                    result.append({"label": item.label, "href": item.href})
+                    result.append(
+                        {
+                            "label": item.label,
+                            "href": item.href,
+                            "type": "0",
+                            "id": item.id,
+                            "nav_item_id": "0",
+                        }
+                    )
             except Exception as item_error:
                 logger.error(f"Error processing nav item {item.id}: {item_error}")
                 continue
@@ -326,3 +341,133 @@ def get_nav_links_static():
         },
         {"label": "關於我們", "href": "/aboutus"},
     ]
+
+
+# 更新主選單
+@nav_router.put("/updateNav0/{item_id}", response_model=NavItemRead)
+def update_nav_item(
+    item_id: int,
+    nav_item_update: NavItemUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    print("updateNav0")
+    db_item = db.query(NavItem).filter(NavItem.id == item_id).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="NavItem not found")
+
+    db_item.label = nav_item_update.label
+    db_item.href = nav_item_update.href
+
+    db.commit()
+    db.refresh(db_item)
+
+    return db_item
+
+
+# 更新副選單
+@nav_router.put("/updateNav1/{item_id}", response_model=NavDropdownRead)
+def update_nav_dropdown(
+    item_id: int,
+    nav_item_update: NavDropdownUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # print("updateNav1")
+
+    db_item = (
+        db.query(NavDropdown)
+        .filter(
+            NavDropdown.id == item_id,
+            NavDropdown.nav_item_id == nav_item_update.nav_item_id,
+        )
+        .first()
+    )
+
+    if not db_item:
+        raise HTTPException(status_code=404, detail="NavDropdown not found")
+
+    db_item.label = nav_item_update.label
+    db_item.href = nav_item_update.href
+
+    db.commit()
+    db.refresh(db_item)
+
+    return db_item
+
+
+# 新增主選單
+@nav_router.post("/createNav0", response_model=NavItemRead)
+def create_nav_item(
+    nav_item_create: NavItemCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    print("createNav0")
+    db_item = NavItem(label=nav_item_create.label, href=nav_item_create.href)
+    db.add(db_item)
+    db.commit()
+    db.refresh(db_item)
+    return db_item
+
+
+# 新增副選單
+@nav_router.post("/createNav1", response_model=NavDropdownRead)
+def create_nav_item(
+    nav_item_create: NavDropdownCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    print("createNav1")
+    db_item = NavDropdown(
+        label=nav_item_create.label,
+        href=nav_item_create.href,
+        nav_item_id=nav_item_create.nav_item_id,
+    )
+    db.add(db_item)
+    db.commit()
+    db.refresh(db_item)
+    return db_item
+
+
+@nav_router.delete("/deleteNav0/{item_id}", response_model=NavItemRead)
+def delete_nav_item(
+    item_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    print("deleteNav0")
+    db_item = db.query(NavItem).filter(NavItem.id == item_id).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="NavItem not found")
+
+    db.delete(db_item)
+    db.commit()
+
+    return db_item  # 回傳被刪除的資料
+
+
+# 刪除子選單
+@nav_router.delete("/deleteNav1/{item_id}", response_model=NavDropdownRead)
+def delete_nav_item(
+    item_id: int,
+    nav_item_create: NavDropdownCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    print("deleteNav1")
+    db_item = (
+        db.query(NavDropdown)
+        .filter(
+            NavDropdown.id == item_id,
+            NavDropdown.nav_item_id == nav_item_create.nav_item_id,
+        )
+        .first()
+    )
+    if not db_item:
+        raise HTTPException(status_code=404, detail="NavItem not found")
+
+    db.delete(db_item)
+    db.commit()
+
+    return db_item  # 回傳被刪除的資料
