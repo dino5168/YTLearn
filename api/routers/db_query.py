@@ -56,7 +56,7 @@ def get_roles(
 
 
 @db_query_router.get("/nav_items", response_model=List[NavItemRead])
-def get_roles(
+def get_nav_items(
     db: Session = Depends(get_db),
     # current_user: User = Depends(get_current_user),
 ):

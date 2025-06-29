@@ -13,6 +13,7 @@ class NavDropdown(Base):
     label = Column(String, nullable=False)
     href = Column(String, nullable=True)
     nav_item_id = Column(Integer, ForeignKey("nav_items.id"), nullable=False)
+    order = Column(Integer, default=0)  # 排序欄位
 
     nav_item = relationship("NavItem", back_populates="dropdowns")
     roles = relationship(

@@ -16,5 +16,8 @@ class NavItem(Base):
 
     roles = relationship("Role", secondary=nav_item_roles, back_populates="nav_items")
     dropdowns = relationship(
-        "NavDropdown", back_populates="nav_item", cascade="all, delete-orphan"
+        "NavDropdown",
+        back_populates="nav_item",
+        cascade="all, delete-orphan",
+        order_by="NavDropdown.order",  # ✅ 加這行來排序 dropdowns
     )

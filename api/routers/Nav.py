@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import asc
 
 from lib_db.db.database import SessionLocal
 from lib_db.models.nav_item import NavItem
@@ -162,7 +163,8 @@ def get_nav_links(db: Session = Depends(get_db)):
     try:
         # 測試資料庫連接
         logger.info("Attempting to query NavItem table")
-        nav_items = db.query(NavItem).all()
+        # nav_items = db.query(NavItem).all()
+        nav_items = db.query(NavItem).order_by(asc(NavItem.order)).all()
         logger.info(f"Successfully retrieved {len(nav_items)} nav items")
 
         result = []
@@ -176,6 +178,7 @@ def get_nav_links(db: Session = Depends(get_db)):
                             "type": "1",
                             "id": d.id,
                             "nav_item_id": d.nav_item_id,
+                            "order": d.order,
                         }
                         for d in item.dropdowns
                     ]
@@ -185,6 +188,7 @@ def get_nav_links(db: Session = Depends(get_db)):
                             "id": item.id,
                             "type": "0",
                             "nav_item_id": "0",
+                            "order": item.order,
                             "dropdown": dropdown,
                         }
                     )
@@ -196,6 +200,7 @@ def get_nav_links(db: Session = Depends(get_db)):
                             "type": "0",
                             "id": item.id,
                             "nav_item_id": "0",
+                            "order": item.order,
                         }
                     )
             except Exception as item_error:
@@ -354,15 +359,17 @@ def update_nav_item(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    print("updateNav0")
+
     db_item = db.query(NavItem).filter(NavItem.id == item_id).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="NavItem not found")
 
     db_item.label = nav_item_update.label
     db_item.href = nav_item_update.href
+    db_item.order = nav_item_update.order
 
     db.commit()
+
     db.refresh(db_item)
 
     return db_item
@@ -389,9 +396,11 @@ def update_nav_dropdown(
 
     if not db_item:
         raise HTTPException(status_code=404, detail="NavDropdown not found")
-
+    logger.info("update sub menu")
+    logger.info(nav_item_update.order)
     db_item.label = nav_item_update.label
     db_item.href = nav_item_update.href
+    db_item.order = nav_item_update.order
 
     db.commit()
     db.refresh(db_item)
@@ -407,7 +416,11 @@ def create_nav_item(
     current_user: User = Depends(get_current_user),
 ):
     print("createNav0")
-    db_item = NavItem(label=nav_item_create.label, href=nav_item_create.href)
+    db_item = NavItem(
+        label=nav_item_create.label,
+        href=nav_item_create.href,
+        order=nav_item_create.order,
+    )
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
