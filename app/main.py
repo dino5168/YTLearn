@@ -9,6 +9,7 @@ from api.routers.Util import util_router
 from api.routers.auth import auth_router
 from api.routers.Nav import nav_router
 from api.routers.db_query import db_query_router
+from api.routers.Common import common_router
 
 # 這個會很耗資源 先 mark 起來
 # from api.routers.Transcribe import transcribe_router
@@ -42,6 +43,7 @@ app.include_router(voice_router)
 app.include_router(util_router)
 app.include_router(auth_router)
 app.include_router(db_query_router)
+app.include_router(common_router)
 # app.include_router(transcribe_router)
 
 # 設定日誌

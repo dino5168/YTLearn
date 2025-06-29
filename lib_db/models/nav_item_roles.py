@@ -1,4 +1,3 @@
-# lib_db/models/nav_items_roles.py
 from sqlalchemy import Column, Integer, String, ForeignKey, Table
 from sqlalchemy.orm import relationship
 
