@@ -33,8 +33,8 @@ async def download_video(req: VideoRequest):
     outputPath = f"{SRT_DIR}/{req.video_id}"
     # 依據 Video ID 建立目錄
     os.makedirs(outputPath, exist_ok=True)
-    print("輸出路徑")
-    print(outputPath)
+    # print("輸出路徑")
+    # print(outputPath)
 
     srtFile = f"{outputPath}/{req.video_id}.en.srt"
     adjFile = f"{outputPath}/{req.video_id}.adj.en.srt"

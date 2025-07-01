@@ -13,6 +13,15 @@ class Settings(BaseSettings):
 
     YT_WATCH_URL: str = "https://www.youtube.com/watch?v="
     BASE_DIR: Path
+    JWT_SECRET_KEY: str
+    GOOGLE_CLIENT_ID: str
+    GOOGLE_CLIENT_SECRET: str
+    FRONTEND_URL: str
+    JWT_EXPIRE_HOURS: int
+    GOOGLE_CALL_BACK_URL: str
+    GOOGLE_REDIRECT_URL: str = "https://accounts.google.com/o/oauth2/auth"
+    GOOGLE_TOKEN_URL: str = "https://oauth2.googleapis.com/token"
+    FRONTEDN_GOOGLE_SUCCESS: str
 
     class Config:
         env_file = ".env"  # 指定 .env 檔案路徑

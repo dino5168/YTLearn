@@ -8,7 +8,7 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from sqlalchemy.orm import Session
-from lib_db.db.database import SessionLocal
+from lib_db.db.database_lite import SessionLocal
 from lib_db.schemas.Subtitle import SubtitleCreate
 
 # 正確的匯入方式：匯入具體的函數

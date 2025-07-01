@@ -16,19 +16,20 @@ from lib_db.models.User import User
 from lib_db.db.database import get_db
 from pydantic import BaseModel
 from urllib.parse import urlencode
+from api.config import settings
 
 # 環境變數配置
-GOOGLE_CLIENT_ID = os.getenv(
-    "GOOGLE_CLIENT_ID",
-    "440121911282-n1tkv3rtrfu9vnm63ajsrm709vc00h3l.apps.googleusercontent.com",
-)
-GOOGLE_CLIENT_SECRET = os.getenv(
-    "GOOGLE_CLIENT_SECRET", "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"
-)
-JWT_SECRET = "your-jwt-secret"  # os.getenv("JWT_SECRET", "your-jwt-secret")
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", settings.GOOGLE_CLIENT_ID)
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", settings.GOOGLE_CLIENT_SECRET)
+
+JWT_SECRET = settings.JWT_SECRET_KEY  # os.getenv("JWT_SECRET", "your-jwt-secret")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_HOURS = 24
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+FRONTEND_URL = settings.FRONTEND_URL
+GOOGLE_CALL_BACK_URL = settings.GOOGLE_CALL_BACK_URL
+GOOGLE_REDIRECT_URL = settings.GOOGLE_REDIRECT_URL
+GOOGLE_TOKEN_URL = settings.GOOGLE_TOKEN_URL
+FRONTEDN_GOOGLE_SUCCESS = settings.FRONTEDN_GOOGLE_SUCCESS
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -54,16 +55,17 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 @auth_router.get("/google")
 def get_google_auth_url():
     """取得 Google OAuth 授權 URL"""
-    print("取得 Google OAuth 授權 URL")
+    # print("取得 Google OAuth 授權 URL")
     params = {
         "client_id": GOOGLE_CLIENT_ID,
-        "redirect_uri": "http://127.0.0.1:8000/auth/google/callback",
+        "redirect_uri": GOOGLE_CALL_BACK_URL,
         "scope": "openid email profile",
         "response_type": "code",
         "access_type": "offline",
         "prompt": "consent",
     }
-    auth_url = f"https://accounts.google.com/o/oauth2/auth?{urlencode(params)}"
+    # 跳轉到 Google 的登入與授權頁面
+    auth_url = f"{GOOGLE_REDIRECT_URL}?{urlencode(params)}"
     return {"auth_url": auth_url}
 
 
@@ -86,20 +88,20 @@ def google_callback(request: Request, db: Session = Depends(get_db)):
         # 交換授權碼為 access token 與 id_token
         print("交換授權碼為 access token 與 id_token")
         token_resp = requests.post(
-            "https://oauth2.googleapis.com/token",
+            GOOGLE_TOKEN_URL,
             data={
                 "code": code,
                 "client_id": GOOGLE_CLIENT_ID,
                 "client_secret": GOOGLE_CLIENT_SECRET,
-                "redirect_uri": "http://127.0.0.1:8000/auth/google/callback",
+                "redirect_uri": GOOGLE_CALL_BACK_URL,
                 "grant_type": "authorization_code",
             },
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
         token_resp.raise_for_status()
         token_json = token_resp.json()
-        print("=================")
-        print("Token response JSON:", token_json)
+        # print("=================")
+        # print("Token response JSON:", token_json)
 
         id_token_str = token_json.get("id_token")
         if not id_token_str:
@@ -120,7 +122,7 @@ def google_callback(request: Request, db: Session = Depends(get_db)):
         google_id = idinfo.get("sub")
 
         # 查詢或建立使用者
-        print("查詢或建立使用者")
+        # print("查詢或建立使用者")
         user = db.query(User).filter(User.email == email).first()
         if not user:
             user = User(
@@ -152,9 +154,9 @@ def google_callback(request: Request, db: Session = Depends(get_db)):
             "sub": str(user.id),
         }
         jwt_token = create_access_token(data=token_data)
-        print("導回前端，帶上 JWT Token")
+        # print("導回前端，帶上 JWT Token")
         # 導回前端，帶上 JWT Token
-        return RedirectResponse(f"http://localhost:3000/auth/success?token={jwt_token}")
+        return RedirectResponse(f"{FRONTEDN_GOOGLE_SUCCESS}?token={jwt_token}")
         # print("導回前端，帶上 JWT Token")
         # return RedirectResponse(f"http:/127.0.0.1:3000")
 
@@ -177,7 +179,7 @@ def verify_token(request: Request):
         raise HTTPException(status_code=401, detail="Invalid authorization header")
 
     token = auth_header.split(" ")[1]
-
+    # 回傳前端 jwt token 放在 payload
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         return {"valid": True, "payload": payload}
@@ -194,8 +196,6 @@ def logout(response: Response):
     登出 - 從後端角度來說，告訴前端要清除 token。
     也可以直接清除 httpOnly cookie (如果你是用 cookie 存 token)。
     """
-
     # 如果你是用 httpOnly cookie 存 token，可以這樣清除 cookie：
     response.delete_cookie(key="auth_token")
-
     return {"message": "Logged out successfully"}

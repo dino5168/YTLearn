@@ -39,6 +39,11 @@ def get_users(
     current_user: User = Depends(get_current_user),  # 這行會自動驗證 JWT
 ):
     users = db.query(User).all()
+    print("users===========================")
+    for user in users:
+        print(f"ID: {user.id}, Email: {user.email}, Name: {user.name}")
+
+    print(users)
     return users
 
 

@@ -1,5 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, func
-from sqlalchemy.ext.declarative import declarative_base
+
+from sqlalchemy.orm import relationship, declarative_base
+from lib_db.models.user_roles import user_roles
 
 Base = declarative_base()
 
@@ -15,6 +17,16 @@ class User(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     is_active = Column(Boolean, default=True)
+
+    # 多對多關聯
+    # roles = relationship(Role, secondary=user_roles, back_populates="users")
+    # 多對多關聯到 Role
+    #
+    # nav_dropdowns = relationship(
+    #   "NavDropdown",
+    #   secondary="nav_dropdown_roles",
+    #   back_populates="roles",
+    # )
 
     def __repr__(self):
         return f"<User(id={self.id}, email='{self.email}', name='{self.name}')>"

@@ -12,7 +12,7 @@ from api.start_message import lifespan  # ✅ 引入 lifespan 顯示 啟動訊�
 
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
-from lib_db.db.database import SessionLocal, engine
+from lib_db.db.database_lite import SessionLocal, engine
 
 # from lib_db import models, crud, schemas
 

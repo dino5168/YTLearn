@@ -5,13 +5,15 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from lib_db.db.database import get_db
 from lib_db.models.User import User
+from api.config import settings
 
-SECRET_KEY = "your-jwt-secret"
+SECRET_KEY = settings.JWT_SECRET_KEY
 ALGORITHM = "HS256"
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/Login")  # 對應你的登入路由
 
 
+# 依賴注入驗證使用者是否有效
 def get_current_user(
     token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
 ) -> User:

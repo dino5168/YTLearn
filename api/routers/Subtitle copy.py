@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from fastapi.responses import PlainTextResponse
 
-from lib_db.db.database import SessionLocal
+from lib_db.db.database_lite import SessionLocal
 from lib_db.schemas.Subtitle import SubtitleCreate, SubtitleInDB, SubtitleUpdate
 from lib_db.crud.subtitle_crud import get_subtitles_by_video
 

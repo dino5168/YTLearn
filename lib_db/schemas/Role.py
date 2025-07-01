@@ -3,6 +3,7 @@ from typing import Optional
 
 
 class RoleBase(BaseModel):
+    id: int
     name: str
     key: str
     description: Optional[str] = None

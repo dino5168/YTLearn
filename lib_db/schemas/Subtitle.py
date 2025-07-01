@@ -70,3 +70,16 @@ class SubtitleInDB(SubtitleBase):
     class Config:
         # ⚠️ Pydantic V2 建議用 from_attributes
         from_attributes = True
+
+
+class SubtitleRead(BaseModel):
+    id: int
+    video_id: str
+    seq: int
+    start_time: str
+    end_time: str
+    en_text: Optional[str] = ""
+    zh_text: Optional[str] = ""
+
+    class Config:
+        from_attributes = True

@@ -10,7 +10,7 @@ if project_root not in sys.path:
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from lib_db.models.Subtitle import Subtitle
-from lib_db.schemas.Subtitle import SubtitleCreate, SubtitleUpdate
+from lib_db.schemas.Subtitle import SubtitleCreate, SubtitleUpdate, SubtitleRead
 
 
 def create_subtitle(db: Session, subtitle: SubtitleCreate) -> Subtitle:
@@ -37,8 +37,9 @@ def get_subtitle(db: Session, subtitle_id: int) -> Subtitle | None:
     return db.query(Subtitle).filter(Subtitle.id == subtitle_id).first()
 
 
-def get_subtitles_by_video(db: Session, video_id: str) -> list[Subtitle]:
+def get_subtitles_by_video(db: Session, video_id: str) -> list[SubtitleRead]:
     """Get all subtitles for a specific video, ordered by sequence number."""
+    print("Get all subtitles for a specific video, ordered by sequence number.")
     return (
         db.query(Subtitle)
         .filter(Subtitle.video_id == video_id)

@@ -10,6 +10,7 @@ class NavDropdownBase(BaseModel):
 
 class NavDropdownCreate(NavDropdownBase):
     nav_item_id: int
+    sort_order: Optional[int] = 0
     role_ids: Optional[List[int]] = []
 
 
@@ -17,7 +18,7 @@ class NavDropdownUpdate(BaseModel):
     label: Optional[str] = None
     href: Optional[str] = None
     nav_item_id: Optional[int] = None
-    order: Optional[int] = 0
+    sort_order: Optional[int] = 0
     role_ids: Optional[List[int]] = None
 
 
@@ -33,7 +34,7 @@ class NavDropdownRead(NavDropdownBase):
 # ---------- 主選單結構 ----------
 class NavItemBase(BaseModel):
     label: str
-    order: Optional[int] = 0
+    sort_order: Optional[int] = 0
     href: Optional[str] = None
 
 

@@ -198,12 +198,17 @@ class YouTubeVideo:
             "duration": self.info.get("duration", 0),
         }
 
-    # 如果影片已存在於資料庫，就略過。
+    # 使用 PostgreSQL VideoManager 保存資料
     def save_to_database(
-        self, db_manager: VideoManager, download_thumbnail: bool = True
+        self, db_manager: VideoManager = None, download_thumbnail: bool = True
     ):
+        """保存影片資料到 PostgreSQL 資料庫"""
         if not self.info:
             self.fetch_info()
+
+        # 如果沒有提供 db_manager，建立一個新的
+        if db_manager is None:
+            db_manager = VideoManager()
 
         video_id = self.info.get("id")
         if db_manager.video_exists(video_id):

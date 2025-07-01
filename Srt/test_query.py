@@ -5,95 +5,58 @@ import os
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.append(project_root)
-
+import csv
 from sqlalchemy.orm import Session
-from lib_db.db.database import SessionLocal
-from lib_db.crud.subtitle_crud import get_subtitles_by_video
+from lib_db.db.database import get_db
+from lib_db.models.Subtitle import Subtitle
+from lib_db.models.Code import Code
+from typing import Type, List
 
 
-def test_get_subtitles_by_video(video_id: str):
-    """測試獲取指定影片的所有字幕"""
-    db: Session = SessionLocal()
-
+def get_data_by_class(model_class: Type, limit: int = 100) -> List:
+    db_gen = get_db()
+    db: Session = next(db_gen)
     try:
-        print(f"🔍 正在查詢影片 '{video_id}' 的字幕...")
-
-        # 獲取字幕列表
-        subtitles = get_subtitles_by_video(db, video_id)
-
-        print(f"📊 找到 {len(subtitles)} 筆字幕記錄")
-
-        if not subtitles:
-            print("❌ 沒有找到任何字幕記錄")
-            return
-
-        print("\n" + "=" * 80)
-        print(f"影片 ID: {video_id}")
-        print("=" * 80)
-
-        # 顯示字幕詳細資訊
-        for i, subtitle in enumerate(subtitles[:10]):  # 只顯示前10筆，避免輸出太多
-            print(f"\n📝 字幕 #{subtitle.seq} (ID: {subtitle.id})")
-            print(f"   時間: {subtitle.start_time} --> {subtitle.end_time}")
-            if subtitle.en_text.strip():
-                print(
-                    f"   英文: {subtitle.en_text[:100]}{'...' if len(subtitle.en_text) > 100 else ''}"
-                )
-            if subtitle.zh_text.strip():
-                print(
-                    f"   中文: {subtitle.zh_text[:100]}{'...' if len(subtitle.zh_text) > 100 else ''}"
-                )
-
-        if len(subtitles) > 10:
-            print(f"\n... 還有 {len(subtitles) - 10} 筆記錄未顯示")
-
-        # 統計資訊
-        print(f"\n📈 統計資訊:")
-        print(f"   總字幕數: {len(subtitles)}")
-
-        en_count = sum(1 for s in subtitles if s.en_text.strip())
-        zh_count = sum(1 for s in subtitles if s.zh_text.strip())
-
-        print(f"   有英文字幕: {en_count} 筆")
-        print(f"   有中文字幕: {zh_count} 筆")
-
-        if subtitles:
-            print(f"   第一筆時間: {subtitles[0].start_time}")
-            print(f"   最後一筆時間: {subtitles[-1].end_time}")
-
-    except Exception as e:
-        print(f"❌ 查詢失敗: {e}")
-        raise
+        query = db.query(model_class)
+        if limit:
+            query = query.limit(limit)
+        return query.all()
+    except:
+        print("exception")
     finally:
         db.close()
 
 
-def test_multiple_videos():
-    """測試多個影片的字幕查詢"""
-    test_video_ids = [
-        "jKi2SvWOCXc",
-    ]
+def write_data_csv(outputfn: str, dataList: List[object]) -> bool:
+    try:
+        if not dataList:
+            print("no data")
+            return False  # 沒資料就不寫
 
-    print("🎬 測試多個影片的字幕查詢...")
+        # 自動取得欄位名稱（假設是 ORM 或有 __dict__ 的物件）
+        fieldnames = dataList[0].__table__.columns.keys()  # 適用 SQLAlchemy ORM
 
-    for video_id in test_video_ids:
-        db: Session = SessionLocal()
-        try:
-            subtitles = get_subtitles_by_video(db, video_id)
-            print(f"📹 {video_id}: {len(subtitles)} 筆字幕")
-        except Exception as e:
-            print(f"📹 {video_id}: 查詢失敗 - {e}")
-        finally:
-            db.close()
+        with open(outputfn, "w", newline="", encoding="utf-8-sig") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+
+            for item in dataList:
+                writer.writerow({k: getattr(item, k) for k in fieldnames})
+
+        return True
+    except Exception as e:
+        print(f"寫入失敗: {e}")
+        return False
+
+
+def hello():
+    dataList = get_data_by_class(Code)
+    for col in Code.__table__.columns:
+        print(col.name)
+
+    isOK = write_data_csv("c:/temp/Code.csv", dataList)
+    print(isOK)
 
 
 if __name__ == "__main__":
-    print("🚀 字幕查詢功能測試")
-    print("=" * 50)
-
-    # 測試 1: 基本查詢測試
-    print("\n1️⃣ 基本查詢測試")
-    test_video_id = "jKi2SvWOCXc"  # 使用您之前插入的影片 ID
-    test_get_subtitles_by_video(test_video_id)
-
-    print("\n✅ 所有測試完成！")
+    hello()

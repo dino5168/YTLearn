@@ -5,9 +5,11 @@ from fastapi.responses import PlainTextResponse
 from lib_db.db.database import SessionLocal
 from lib_db.schemas.Subtitle import SubtitleCreate, SubtitleInDB, SubtitleUpdate
 from lib_db.crud.subtitle_crud import get_subtitles_by_video
+from lib_db.db.database import get_db
 
 # from lib_db.crud.subtitle_crud import subtitle_crud  # ✅ 匯入這個檔案（不是 Subtitle）
 import lib_db.crud.subtitle_crud as subtitle_crud
+
 
 subtitle_router = APIRouter(
     prefix="/subtitles",
@@ -16,12 +18,6 @@ subtitle_router = APIRouter(
 
 
 # Dependency: 提供 DB session
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @subtitle_router.get("/{video_id}")
@@ -30,20 +26,20 @@ def get_subtitle_json(video_id: str, db: Session = Depends(get_db)):
     subtitles = get_subtitles_by_video(db, video_id)
     if not subtitles:
         raise HTTPException(status_code=404, detail="No subtitles found for the video.")
+    return [
+        {
+            "id": s.id,
+            "video_id": s.video_id,
+            "seq": s.seq,
+            "start_time": (s.start_time or "").strip(),
+            "end_time": (s.end_time or "").strip(),
+            "en_text": (s.en_text or "").strip(),
+            "zh_text": (s.zh_text or "").strip(),
+        }
+        for s in subtitles
+    ]
 
-    result = []
-    for s in subtitles:
-        result.append(
-            {
-                "seq": s.seq,
-                "start_time": s.start_time,
-                "end_time": s.end_time,
-                "en_text": s.en_text.strip(),
-                "zh_text": s.zh_text.strip(),
-            }
-        )
-
-    return result  # FastAPI 會自動回傳 JSON 格式
+    # return result  # FastAPI 會自動回傳 JSON 格式
 
 
 @subtitle_router.post("/", response_model=SubtitleInDB)

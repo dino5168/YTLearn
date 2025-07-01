@@ -10,6 +10,8 @@ from api.routers.auth import auth_router
 from api.routers.Nav import nav_router
 from api.routers.db_query import db_query_router
 from api.routers.Common import common_router
+from api.routers.db_create import db_create_router
+from api.routers.DataBaseOp import databaseop_router
 
 # 這個會很耗資源 先 mark 起來
 # from api.routers.Transcribe import transcribe_router
@@ -21,8 +23,6 @@ from api.start_message import lifespan  # ✅ 引入 lifespan 顯示 啟動訊�
 from api.config import settings  # 讀取設定檔
 from middlewares.cors import setup_cors  # ✅ CORS 設定模組
 
-
-from lib_db.crud.subtitle_crud import get_subtitles_by_video
 
 THUMBNAILS_DIR = settings.THUMBNAILS_DIR
 THUMBNAILS_URL_PATH = settings.THUMBNAILS_URL_PATH
@@ -44,17 +44,19 @@ app.include_router(util_router)
 app.include_router(auth_router)
 app.include_router(db_query_router)
 app.include_router(common_router)
+app.include_router(db_create_router)
+app.include_router(databaseop_router)
 # app.include_router(transcribe_router)
 
 # 設定日誌
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+# router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 # 掛載路由器
-app.include_router(router)  # <== 一定要這行！
+# app.include_router(router)  # <== 一定要這行！
 
 # ✅ 加入 CORS
 setup_cors(app)

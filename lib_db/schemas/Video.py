@@ -27,4 +27,4 @@ class VideoRead(BaseModel):
     duration: int
 
     class Config:
-        orm_mode = True  # ✅ 這一行很重要！
+        from_attributes = True  # ✅ 這一行很重要！

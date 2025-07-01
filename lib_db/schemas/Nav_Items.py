@@ -6,7 +6,7 @@ from typing import Optional, List
 class NavDropdownBase(BaseModel):
     label: str
     href: str
-    order: Optional[int] = 0  # 顯示順序，預設為 0
+    sort_order: Optional[int] = 0  # 顯示順序，預設為 0
 
 
 class NavDropdownCreate(NavDropdownBase):
@@ -18,7 +18,7 @@ class NavDropdownCreate(NavDropdownBase):
 class NavItemBase(BaseModel):
     label: str  # 主選單名稱
     href: Optional[str] = None  # 主選單連結（可為 None）
-    order: Optional[int] = 0  # 顯示順序，預設為 0
+    sort_order: Optional[int] = 0  # 顯示順序，預設為 0
 
 
 # ---------- 建立主選單 ----------
@@ -30,7 +30,7 @@ class NavItemCreate(NavItemBase):
 class NavItemUpdate(BaseModel):
     label: Optional[str] = None
     href: Optional[str] = None
-    order: Optional[int] = None
+    sort_order: Optional[int] = None
     role_ids: Optional[List[int]] = None
     dropdowns: Optional[List[NavDropdownCreate]] = None
 

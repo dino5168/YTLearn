@@ -1,14 +1,16 @@
 import jwt
 from datetime import datetime, timedelta
 
-JWT_SECRET = "your_jwt_secret"  # 實際上從環境變數讀取
+from api.config import settings
+
+JWT_SECRET = settings.JWT_SECRET_KEY  # 實際上從環境變數讀取
 
 
 def create_jwt(data: dict, expires_minutes=60):
     payload = {
         **data,
-        "exp": datetime.utcnow() + timedelta(minutes=expires_minutes),
-        "iat": datetime.utcnow(),
+        "exp": datetime.now() + timedelta(minutes=expires_minutes),
+        "iat": datetime.now(),
     }
     token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
     return token

@@ -3,7 +3,7 @@ from lib_db.db.database import Base
 
 
 class Subtitle(Base):
-    __tablename__ = "Subtitles"
+    __tablename__ = "subtitles"
 
     id = Column(Integer, primary_key=True, index=True)
     video_id = Column(String, index=True)  # YouTube 影片 ID

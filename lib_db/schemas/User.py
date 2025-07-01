@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr, AnyUrl
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
+from lib_db.schemas.Role import RoleRead
 
 
 # 共通欄位
@@ -21,6 +22,8 @@ class UserRead(UserBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    is_active: bool
+    roles: List[RoleRead] = []
 
     class Config:
         orm_mode = True  # 讓 Pydantic 能接收 SQLAlchemy 物件

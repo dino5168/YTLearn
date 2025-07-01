@@ -164,7 +164,7 @@ def get_nav_links(db: Session = Depends(get_db)):
         # 測試資料庫連接
         logger.info("Attempting to query NavItem table")
         # nav_items = db.query(NavItem).all()
-        nav_items = db.query(NavItem).order_by(asc(NavItem.order)).all()
+        nav_items = db.query(NavItem).order_by(asc(NavItem.sort_order)).all()
         logger.info(f"Successfully retrieved {len(nav_items)} nav items")
 
         result = []
@@ -178,7 +178,7 @@ def get_nav_links(db: Session = Depends(get_db)):
                             "type": "1",
                             "id": d.id,
                             "nav_item_id": d.nav_item_id,
-                            "order": d.order,
+                            "sort_order": d.sort_order,
                         }
                         for d in item.dropdowns
                     ]
@@ -188,7 +188,7 @@ def get_nav_links(db: Session = Depends(get_db)):
                             "id": item.id,
                             "type": "0",
                             "nav_item_id": "0",
-                            "order": item.order,
+                            "sort_order": item.sort_order,
                             "dropdown": dropdown,
                         }
                     )
@@ -200,7 +200,7 @@ def get_nav_links(db: Session = Depends(get_db)):
                             "type": "0",
                             "id": item.id,
                             "nav_item_id": "0",
-                            "order": item.order,
+                            "sort_order": item.sort_order,
                         }
                     )
             except Exception as item_error:
@@ -366,7 +366,7 @@ def update_nav_item(
 
     db_item.label = nav_item_update.label
     db_item.href = nav_item_update.href
-    db_item.order = nav_item_update.order
+    db_item.sort_order = nav_item_update.sort_order
 
     db.commit()
 
@@ -397,10 +397,10 @@ def update_nav_dropdown(
     if not db_item:
         raise HTTPException(status_code=404, detail="NavDropdown not found")
     logger.info("update sub menu")
-    logger.info(nav_item_update.order)
+    logger.info(nav_item_update.sort_order)
     db_item.label = nav_item_update.label
     db_item.href = nav_item_update.href
-    db_item.order = nav_item_update.order
+    db_item.sort_order = nav_item_update.sort_order
 
     db.commit()
     db.refresh(db_item)
@@ -419,7 +419,7 @@ def create_nav_item(
     db_item = NavItem(
         label=nav_item_create.label,
         href=nav_item_create.href,
-        order=nav_item_create.order,
+        sort_order=nav_item_create.sort_order,
     )
     db.add(db_item)
     db.commit()
@@ -435,10 +435,12 @@ def create_nav_item(
     current_user: User = Depends(get_current_user),
 ):
     print("createNav1")
+    print(nav_item_create.nav_item_id)
     db_item = NavDropdown(
         label=nav_item_create.label,
         href=nav_item_create.href,
         nav_item_id=nav_item_create.nav_item_id,
+        sort_order=nav_item_create.sort_order,
     )
     db.add(db_item)
     db.commit()
