@@ -2,7 +2,7 @@
 # 掛載靜態資源到 FastAPI 應用程式
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from api.config import settings  # 讀取設定檔
+from app.config import settings  # 讀取設定檔
 
 # 從設定檔取得路徑
 THUMBNAILS_DIR = settings.THUMBNAILS_DIR

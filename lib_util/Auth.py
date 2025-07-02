@@ -5,7 +5,7 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from lib_db.db.database import get_db
 from lib_db.models.User import User
-from api.config import settings
+from app.config import settings
 
 SECRET_KEY = settings.JWT_SECRET_KEY
 ALGORITHM = "HS256"

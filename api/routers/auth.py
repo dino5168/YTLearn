@@ -16,7 +16,7 @@ from lib_db.models.User import User
 from lib_db.db.database import get_db
 from pydantic import BaseModel
 from urllib.parse import urlencode
-from api.config import settings
+from app.config import settings
 
 # 環境變數配置
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", settings.GOOGLE_CLIENT_ID)

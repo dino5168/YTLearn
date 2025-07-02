@@ -12,16 +12,16 @@ from api.routers.db_query import db_query_router
 from api.routers.Common import common_router
 from api.routers.db_create import db_create_router
 from api.routers.DataBaseOp import databaseop_router
+from api.routers.query import query_router
 
 # 這個會很耗資源 先 mark 起來
 # from api.routers.Transcribe import transcribe_router
-
+from app.start_message import lifespan  # ✅ 引入 lifespan 顯示 啟動訊息
+from app.config import settings  # 讀取設定檔
+from middlewares.cors import setup_cors  # ✅ CORS 設定模組
 from api.static_path.static_config import mount_static  # 靜態路徑
-from api.start_message import lifespan  # ✅ 引入 lifespan 顯示 啟動訊息
 
 # from lib_db import models, crud, schemas
-from api.config import settings  # 讀取設定檔
-from middlewares.cors import setup_cors  # ✅ CORS 設定模組
 
 
 THUMBNAILS_DIR = settings.THUMBNAILS_DIR
@@ -46,6 +46,7 @@ app.include_router(db_query_router)
 app.include_router(common_router)
 app.include_router(db_create_router)
 app.include_router(databaseop_router)
+app.include_router(query_router)
 # app.include_router(transcribe_router)
 
 # 設定日誌

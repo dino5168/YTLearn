@@ -1,7 +1,7 @@
 import jwt
 from datetime import datetime, timedelta
 
-from api.config import settings
+from app.config import settings
 
 JWT_SECRET = settings.JWT_SECRET_KEY  # 實際上從環境變數讀取
 

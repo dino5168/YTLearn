@@ -11,7 +11,7 @@ from lib_srt.CSrtTranslator import CSrtTranslator
 from lib_srt.CSrt2DB import CSrt2DB
 
 # 讀取設定檔
-from api.config import settings
+from app.config import settings
 
 YT_WATCH_URL = settings.YT_WATCH_URL
 SRT_DIR = settings.SRT_DIR

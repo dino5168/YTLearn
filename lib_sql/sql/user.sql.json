@@ -1,0 +1,4 @@
+{
+  "get_users": "SELECT id, name, email FROM users WHERE is_active = true;",
+  "get_user_by_id": "SELECT * FROM users WHERE id = :id;"
+}

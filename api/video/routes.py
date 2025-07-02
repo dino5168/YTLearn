@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from lib_db.db.database import SessionLocal, engine
 from lib_db.crud import Video
-from api.config import settings  # 讀取設定檔
+from app.config import settings  # 讀取設定檔
 
 
 THUMBNAILS_DIR = settings.THUMBNAILS_DIR

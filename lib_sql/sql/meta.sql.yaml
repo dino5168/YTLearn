@@ -1,0 +1,49 @@
+TABLE_META_DATA: |
+  SELECT
+    column_name AS "欄位名稱",
+    data_type AS "資料型別",
+    character_maximum_length AS "最大長度",
+    is_nullable AS "可為NULL",
+    column_default AS "預設值"
+  FROM
+    information_schema.columns
+  WHERE
+    table_schema = 'public'
+    AND table_name = 'users'
+  ORDER BY
+    ordinal_position;
+
+TABLE_META_DATA_V2: |
+  SELECT
+    column_name AS "欄位名稱",
+    data_type AS "資料型別",
+    character_maximum_length AS "最大長度",
+    is_nullable AS "可為NULL",
+    column_default AS "預設值"
+  FROM
+    information_schema.columns
+  WHERE
+    table_schema = 'public'
+    AND table_name = :table_name
+  ORDER BY
+    ordinal_position;
+
+TABLE_META_DATA_V3: |
+  SELECT
+    cols.column_name AS "欄位名稱",
+    cols.data_type AS "資料型別",
+    cols.character_maximum_length AS "最大長度",
+    cols.is_nullable AS "可為NULL",
+    cols.column_default AS "預設值",
+    pgd.description AS "欄位描述"
+  FROM
+    information_schema.columns cols
+  LEFT JOIN
+    pg_catalog.pg_statio_all_tables AS st ON st.relname = cols.table_name
+  LEFT JOIN
+    pg_catalog.pg_description pgd ON pgd.objoid = st.relid AND pgd.objsubid = cols.ordinal_position
+  WHERE
+    cols.table_schema = 'public'
+    AND cols.table_name = :table_name
+  ORDER BY
+    cols.ordinal_position;

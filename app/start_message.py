@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 import logging
 
 
-from api.config import settings
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
