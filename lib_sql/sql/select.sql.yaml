@@ -1,0 +1,5 @@
+SELECT_NAV_ITEM_ROLES: |
+  SELECT nav_item_id, role_id FROM nav_item_roles;
+
+SELECT_VIDEOS: |
+  SELECT id, title, uploader, upload_date, view_count, video_url, thumbnail_url, local_thumbnail_path, format, duration FROM videos;

@@ -1,52 +1,116 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Body
 from typing import List
-from lib_db.schemas.user_role import UserRoleCreate, UserRoleRead
 from lib_db.db.database import get_db  # 你定義的 get_db function
-from lib_db.models.user_roles import user_roles  # 關聯表 Table
-from lib_db.models.User import User
-from lib_db.models.role import Role
-from fastapi import status
 
-db_create_router = APIRouter(prefix="/Create", tags=["Create"])
+from lib_sql.sql_loader_singleton import get_sql_loader
+from lib_sql.SQLQueryExecutor import SQLQueryExecutor
+from lib_db.db.database import get_async_db
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
+
+db_create_router = APIRouter(prefix="/DBCreate", tags=["DBCreate"])
+sql_loader = get_sql_loader()
 
 
-@db_create_router.post(
-    "/UserRole", response_model=List[UserRoleRead], status_code=status.HTTP_201_CREATED
-)
-def create_user_roles(
-    user_roles_data: List[UserRoleCreate], db: Session = Depends(get_db)
+@db_create_router.post("/TABLE_INSERT/{sql_key}")
+async def insert_post(
+    sql_key: str, payload: dict = Body(...), db: AsyncSession = Depends(get_async_db)
 ):
-    created = []
-    for user_role in user_roles_data:
-        # 檢查 user 是否存在
-        user = db.query(User).filter(User.id == user_role.user_id).first()
-        if not user:
+    try:
+        executor = SQLQueryExecutor(sql_loader, db)
+        result = await executor.execute(sql_key, payload)
+        return result
+    except Exception as e:
+        raise e
+
+
+# 將 角色 ID 填入 nav_item_roles , nav_drop_roles
+@db_create_router.post("/TABLE_INSERT_M/{sql_key}")
+async def insert_m_post(
+    sql_key: str, payload: dict = Body(...), db: AsyncSession = Depends(get_async_db)
+):
+    try:
+        # 驗證 payload 結構
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=400, detail="Invalid payload format")
+
+        if "menu_items" not in payload:
             raise HTTPException(
-                status_code=404, detail=f"User {user_role.user_id} not found"
+                status_code=400, detail="Missing 'menu_items' in payload"
             )
 
-        # 檢查 role 是否存在
-        role = db.query(Role).filter(Role.id == user_role.role_id).first()
-        if not role:
-            raise HTTPException(
-                status_code=404, detail=f"Role {user_role.role_id} not found"
-            )
+        if "role_id" not in payload:
+            raise HTTPException(status_code=400, detail="Missing 'role_id' in payload")
 
-        # 先刪除舊的（若存在）
-        db.execute(
-            user_roles.delete().where(
-                (user_roles.c.user_id == user_role.user_id)
-                & (user_roles.c.role_id == user_role.role_id)
-            )
-        )
-        # 插入新關聯
-        db.execute(
-            user_roles.insert().values(
-                user_id=user_role.user_id, role_id=user_role.role_id
-            )
-        )
-        created.append(user_role)
+        menu_items = payload["menu_items"]
+        role_id = payload["role_id"]
 
-    db.commit()
-    return created
+        # 獲取 SQL 語句
+        sqldeleteMain = sql_loader.get_sql("DELETE_NAV_ITEM_ROLES")
+        sqldeleteDrop = sql_loader.get_sql("DELETE_NAV_DROPDOWN_ROLES")
+        sqlmain = sql_loader.get_sql("INSERT_NAV_ITEM_ROLES")
+        sqlsub = sql_loader.get_sql("INSERT_NAV_DROPDOWN_ROLES")
+
+        # 轉換為 SQLAlchemy text 對象
+        sql_delete_main = text(sqldeleteMain)
+        sql_delete_drop = text(sqldeleteDrop)
+        sql_insert_main = text(sqlmain)
+        sql_insert_sub = text(sqlsub)
+
+        print(f"Deleting records for role_id: {role_id}")
+
+        # 在同一個事務中執行所有操作
+        # 1. 先刪除現有記錄
+        await db.execute(sql_delete_main, {"role_id": role_id})
+        await db.execute(sql_delete_drop, {"role_id": role_id})
+
+        print("Delete operations completed")
+
+        # 2. 插入新記錄
+        for i, item in enumerate(menu_items):
+            # 驗證 item 結構
+            if not isinstance(item, dict):
+                raise HTTPException(
+                    status_code=400, detail=f"Invalid item format at index {i}"
+                )
+
+            if "id" not in item or "type" not in item:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Missing 'id' or 'type' in item at index {i}",
+                )
+
+            item_id = item["id"]
+            item_type = item["type"]
+
+            if item_type == "0":
+                await db.execute(
+                    sql_insert_main, {"nav_item_id": item_id, "role_id": role_id}
+                )
+                print(f"Inserted nav_item_id: {item_id} for role_id: {role_id}")
+            elif item_type == "1":
+                await db.execute(
+                    sql_insert_sub, {"nav_dropdown_id": item_id, "role_id": role_id}
+                )
+                print(f"Inserted nav_dropdown_id: {item_id} for role_id: {role_id}")
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid item type: {item_type} at index {i}",
+                )
+
+        # 3. 只在最後提交一次事務
+        await db.commit()
+        print("All operations committed successfully")
+
+        return {"status": "success", "inserted": len(menu_items)}
+
+    except HTTPException:
+        await db.rollback()
+        print("Transaction rolled back due to HTTPException")
+        raise
+
+    except Exception as e:
+        await db.rollback()
+        print(f"Transaction rolled back due to error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")

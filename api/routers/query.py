@@ -11,9 +11,8 @@ from lib_sql.SQLQueryExecutor import SQLQueryExecutor
 
 from lib_sql.sql_loader_singleton import get_sql_loader
 
-query_router = APIRouter(prefix="/DBQuery", tags=["DBQuery"])
-
 sql_loader = get_sql_loader()
+query_router = APIRouter(prefix="/DBQuery", tags=["DBQuery"])
 
 
 @query_router.get("/{sql_key}")

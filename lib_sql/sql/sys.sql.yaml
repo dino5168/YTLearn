@@ -1,0 +1,21 @@
+#使用 /DBQyery/{sql_key} = 參數 給 tableName
+TABLE_SCHEMAT_COMMENT: |
+  SELECT
+      cols.attname AS column_name,
+      format_type(cols.atttypid, cols.atttypmod) AS data_type,
+      d.description AS comment
+  FROM
+      pg_attribute cols
+  JOIN
+      pg_class c ON c.oid = cols.attrelid
+  JOIN
+      pg_namespace n ON n.oid = c.relnamespace
+  LEFT JOIN
+      pg_description d ON d.objoid = c.oid AND d.objsubid = cols.attnum
+  WHERE
+      c.relname = :table_name       -- ⚠️ 改成你的資料表名稱
+      AND n.nspname = 'public'            -- ⚠️ schema 名稱（通常是 public）
+      AND cols.attnum > 0
+      AND NOT cols.attisdropped
+  ORDER BY
+      cols.attnum;

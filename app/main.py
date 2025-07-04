@@ -11,8 +11,11 @@ from api.routers.Nav import nav_router
 from api.routers.db_query import db_query_router
 from api.routers.Common import common_router
 from api.routers.db_create import db_create_router
-from api.routers.DataBaseOp import databaseop_router
+from api.routers.db_delete import db_delete_router
+
 from api.routers.query import query_router
+from api.routers.create import create_router
+from api.routers.db_update import db_update_router
 
 # 這個會很耗資源 先 mark 起來
 # from api.routers.Transcribe import transcribe_router
@@ -44,9 +47,13 @@ app.include_router(util_router)
 app.include_router(auth_router)
 app.include_router(db_query_router)
 app.include_router(common_router)
+# create 2025-07-03
 app.include_router(db_create_router)
-app.include_router(databaseop_router)
+app.include_router(db_update_router)
+app.include_router(db_delete_router)
+
 app.include_router(query_router)
+app.include_router(create_router)
 # app.include_router(transcribe_router)
 
 # 設定日誌

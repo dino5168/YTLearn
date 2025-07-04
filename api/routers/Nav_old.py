@@ -17,13 +17,9 @@ from lib_util.Auth import get_current_user  # Import the dependency
 from lib_db.models.User import User
 from lib_db.db.database import get_db
 from lib_db.db.database import get_async_db
-from lib_sql.sql_loader_singleton import get_sql_loader
 import logging
 
 nav_router = APIRouter(prefix="/nav", tags=["Navigation"])
-
-
-sql_loader = get_sql_loader()
 logger = logging.getLogger(__name__)
 
 
@@ -171,6 +167,72 @@ import logging
 # nav_router = APIRouter()
 nav_router = APIRouter(prefix="/nav", tags=["Navigation"])
 logger = logging.getLogger(__name__)
+
+
+@nav_router.get("/links")
+def get_nav_links(db: Session = Depends(get_db)):  # 改用 get_db 而非 get_async_db
+    logger.info("使用純 SQL 查詢 nav_items + nav_dropdowns")
+    try:
+        raw_sql = """
+        SELECT 
+          ni.id,
+          ni.label,
+          ni.href,
+          ni.sort_order,
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'id', nd.id,
+                'label', nd.label,
+                'href', nd.href,
+                'type', '1',
+                'nav_item_id', nd.nav_item_id,
+                'sort_order', nd.sort_order
+              ) ORDER BY nd.sort_order
+            ) FILTER (WHERE nd.id IS NOT NULL),
+            '[]'
+          ) AS dropdown
+        FROM nav_items ni
+        LEFT JOIN nav_dropdowns nd
+          ON nd.nav_item_id = ni.id
+        GROUP BY ni.id, ni.label, ni.href, ni.sort_order
+        ORDER BY ni.sort_order;
+        """
+
+        result = db.execute(text(raw_sql))
+        nav_items = []
+        for row in result:
+            item = {
+                "id": row.id,
+                "label": row.label,
+                "type": "0",
+                "nav_item_id": "0",
+                "sort_order": row.sort_order,
+            }
+
+            # 處理 dropdown 資料
+            dropdown_data = row.dropdown
+            if isinstance(dropdown_data, str):
+                import json
+
+                dropdown_data = json.loads(dropdown_data)
+
+            # 如果有 dropdown，加入 dropdown；否則加入 href
+            if dropdown_data and len(dropdown_data) > 0:
+                item["dropdown"] = dropdown_data
+            else:
+                item["href"] = row.href
+
+            nav_items.append(item)
+
+        return nav_items
+
+    except SQLAlchemyError as e:
+        logger.error(f"SQLAlchemy error in get_nav_links: {str(e)}")
+        raise HTTPException(status_code=500, detail="Database error")
+    except Exception as e:
+        logger.error(f"Unexpected error in get_nav_links: {str(e)}")
+        raise HTTPException(status_code=500, detail="Unexpected error")
 
 
 # 從資料庫讀取 nav_items 與 nav_dropdowns，回傳簡單結構
@@ -506,45 +568,3 @@ def delete_nav_item(
     db.commit()
 
     return db_item  # 回傳被刪除的資料
-
-
-@nav_router.get("/links")
-def get_nav_links(db: Session = Depends(get_db)):  # 改用 get_db 而非 get_async_db
-    logger.info("使用純 SQL 查詢 nav_items + nav_dropdowns")
-    try:
-        raw_sql = sql_loader.get_sql("SELECT_MENU_BY_ROLE_ID")
-
-        result = db.execute(text(raw_sql), {"role_id": 1})
-        nav_items = []
-        for row in result:
-            item = {
-                "id": row.id,
-                "label": row.label,
-                "type": "0",
-                "nav_item_id": "0",
-                "sort_order": row.sort_order,
-            }
-
-            # 處理 dropdown 資料
-            dropdown_data = row.dropdown
-            if isinstance(dropdown_data, str):
-                import json
-
-                dropdown_data = json.loads(dropdown_data)
-
-            # 如果有 dropdown，加入 dropdown；否則加入 href
-            if dropdown_data and len(dropdown_data) > 0:
-                item["dropdown"] = dropdown_data
-            else:
-                item["href"] = row.href
-
-            nav_items.append(item)
-
-        return nav_items
-
-    except SQLAlchemyError as e:
-        logger.error(f"SQLAlchemy error in get_nav_links: {str(e)}")
-        raise HTTPException(status_code=500, detail="Database error")
-    except Exception as e:
-        logger.error(f"Unexpected error in get_nav_links: {str(e)}")
-        raise HTTPException(status_code=500, detail="Unexpected error")

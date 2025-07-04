@@ -1,0 +1,53 @@
+SELECT_MENU_BY_ROLE_ID: |
+  SELECT 
+    ni.id,
+    ni.label,
+    ni.href,
+    ni.sort_order,
+    COALESCE(
+      json_agg(
+        json_build_object(
+          'id', nd.id,
+          'label', nd.label,
+          'href', nd.href,
+          'type', '1',
+          'nav_item_id', nd.nav_item_id,
+          'sort_order', nd.sort_order
+        ) ORDER BY nd.sort_order
+      ) FILTER (WHERE nd.id IS NOT NULL),
+      '[]'
+    ) AS dropdown
+  FROM nav_items ni
+  -- 連結角色授權的主選單
+  JOIN nav_item_roles nir ON nir.nav_item_id = ni.id
+  -- 連結子選單與其授權
+  LEFT JOIN nav_dropdowns nd ON nd.nav_item_id = ni.id
+  LEFT JOIN nav_dropdown_roles ndr ON ndr.nav_dropdown_id = nd.id AND ndr.role_id = :role_id
+  -- 過濾主選單權限
+  WHERE nir.role_id = :role_id
+  GROUP BY ni.id, ni.label, ni.href, ni.sort_order
+  ORDER BY ni.sort_order;
+SELECT_MENU: |
+  SELECT 
+    ni.id,
+    ni.label,
+    ni.href,
+    ni.sort_order,
+    COALESCE(
+      json_agg(
+        json_build_object(
+          'id', nd.id,
+          'label', nd.label,
+          'href', nd.href,
+          'type', '1',
+          'nav_item_id', nd.nav_item_id,
+          'sort_order', nd.sort_order
+        ) ORDER BY nd.sort_order
+      ) FILTER (WHERE nd.id IS NOT NULL),
+      '[]'
+    ) AS dropdown
+  FROM nav_items ni
+  LEFT JOIN nav_dropdowns nd
+    ON nd.nav_item_id = ni.id
+  GROUP BY ni.id, ni.label, ni.href, ni.sort_order
+  ORDER BY ni.sort_order;
