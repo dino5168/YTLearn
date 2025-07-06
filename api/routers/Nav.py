@@ -13,7 +13,7 @@ from lib_db.schemas.nav import NavDropdownCreate, NavDropdownRead, NavDropdownUp
 # from lib_db.schemas.nav import NavItemRoleLinkCreate
 
 from typing import List
-from lib_util.Auth import get_current_user  # Import the dependency
+from lib_util.Auth import get_current_user, get_optional_user  # Import the dependency
 from lib_db.models.User import User
 from lib_db.db.database import get_db
 from lib_db.db.database import get_async_db
@@ -509,12 +509,20 @@ def delete_nav_item(
 
 
 @nav_router.get("/links")
-def get_nav_links(db: Session = Depends(get_db)):  # 改用 get_db 而非 get_async_db
+def get_nav_links(
+    db: Session = Depends(get_db), current_user: User = Depends(get_optional_user)
+):  # 改用 get_db 而非 get_async_db
     logger.info("使用純 SQL 查詢 nav_items + nav_dropdowns")
     try:
+        logger.info("取得目前使用者的角色")
+        role_id = 6
+        if current_user is not None:
+            role_id = current_user.role_id
+        logger.info("取得目前使用者的角色")
+        logger.info(role_id)
         raw_sql = sql_loader.get_sql("SELECT_MENU_BY_ROLE_ID")
 
-        result = db.execute(text(raw_sql), {"role_id": 1})
+        result = db.execute(text(raw_sql), {"role_id": role_id})
         nav_items = []
         for row in result:
             item = {
@@ -539,6 +547,7 @@ def get_nav_links(db: Session = Depends(get_db)):  # 改用 get_db 而非 get_as
                 item["href"] = row.href
 
             nav_items.append(item)
+            logger.info(nav_items)
 
         return nav_items
 

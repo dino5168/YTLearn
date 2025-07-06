@@ -16,6 +16,7 @@ async def test_put(
     sql_key: str, payload: dict = Body(...), db: AsyncSession = Depends(get_async_db)
 ):
     try:
+        print("Table update")
         executor = SQLQueryExecutor(sql_loader, db)
         result = await executor.execute(sql_key, payload)
         return result

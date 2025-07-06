@@ -6,3 +6,6 @@ UPDATE_DIC_SQL: |
 
 UPDATE_NAV_ITEM_ROLES: |
   UPDATE nav_item_roles SET nav_item_id = :nav_item_id, role_id = :role_id WHERE id = :id;
+
+UPDATE_USER_ROLEID: |
+  update users set is_active = :is_active ,role_id = :role_id  where id= :id

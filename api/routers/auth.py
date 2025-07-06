@@ -145,14 +145,16 @@ def google_callback(request: Request, db: Session = Depends(get_db)):
 
         # 產生 JWT
         print("產生 JWT")
-        print(f"${user.id} {user.email,user.name}")
+        print(f"user:id = {user.id} , {user.email,user.name} , role_id: {user.role_id}")
         token_data = {
             "user_id": user.id,
             "email": user.email,
             "name": user.name,
             "avatar_url": avatar_url,
             "sub": str(user.id),
+            "role_id" : user.role_id
         }
+
         jwt_token = create_access_token(data=token_data)
         # print("導回前端，帶上 JWT Token")
         # 導回前端，帶上 JWT Token

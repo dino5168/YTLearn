@@ -9,3 +9,6 @@ SELECT_DIC_SQL_ALL: |
 
 SELECT_NAV_ITEM_ROLES_ALL: |
   select * from nav_item_roles
+
+SELECT_USERS_ALL: |
+  select * from users
