@@ -42,12 +42,19 @@ class LoginResponse(BaseModel):
 
 # 取得 jwt token
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
-
     to_encode = data.copy()
-    now = datetime.now(timezone.utc)  # ✅ 附帶 UTC 時區資訊的 datetime 物件
+    now = datetime.now(timezone.utc)
     expire = now + (expires_delta or timedelta(hours=JWT_EXPIRE_HOURS))
-    # 明確設定 exp, iat, nbf 為同一時間 會有延遲問題 如果使用者 在一秒內執行登入登出 加入 2s delay
-    to_encode.update({"exp": expire, "iat": now, "nbf": now - timedelta(seconds=5)})
+
+    # 更保守的時間設定
+    to_encode.update(
+        {
+            "exp": expire,
+            "iat": now,
+            "nbf": now - timedelta(seconds=10),  # 增加到 10 秒緩衝
+        }
+    )
+
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
     return encoded_jwt
 
@@ -144,15 +151,15 @@ def google_callback(request: Request, db: Session = Depends(get_db)):
             db.commit()
 
         # 產生 JWT
-        print("產生 JWT")
-        print(f"user:id = {user.id} , {user.email,user.name} , role_id: {user.role_id}")
+        # print("產生 JWT")
+        # print(f"user:id = {user.id} , {user.email,user.name} , role_id: {user.role_id}")
         token_data = {
             "user_id": user.id,
             "email": user.email,
             "name": user.name,
             "avatar_url": avatar_url,
             "sub": str(user.id),
-            "role_id" : user.role_id
+            "role_id": user.role_id,
         }
 
         jwt_token = create_access_token(data=token_data)

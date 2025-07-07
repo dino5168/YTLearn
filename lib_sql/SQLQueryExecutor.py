@@ -16,6 +16,7 @@ class SQLQueryExecutor:
         params: Optional[Dict[str, Any]] = None,
     ) -> Any:
         # 取得 SQL 字串
+
         sql_raw = self.sql_loader.get_sql(sql_key)
 
         if not sql_raw:
@@ -33,11 +34,26 @@ class SQLQueryExecutor:
 
         # 判斷是否為 SELECT
         is_select = bool(re.match(r"^\s*SELECT", sql_raw, re.IGNORECASE))
+        is_insert = bool(re.match(r"^\s*INSERT", sql_raw, re.IGNORECASE))
 
         if is_select:
             rows = result.fetchall()
             return [dict(row._mapping) for row in rows]
         else:
-            # 非 SELECT（例如 INSERT/UPDATE/DELETE），可選擇回傳影響筆數
-            await self.db.commit()  # INSERT 一定要 commit
-            return {"rows_affected": result.rowcount}
+            await self.db.commit()  # 非 select 需 commit
+            # 如果是 INSERT，嘗試取得新插入的 ID
+            if is_insert:
+                inserted_row = result.fetchone()
+                inserted_id = inserted_row[0] if inserted_row else None
+                return {
+                    "rows_affected": result.rowcount,
+                    "inserted_id": inserted_id,  # 新插入記錄的 ID
+                    "operation": "INSERT",
+                    "success": result.rowcount > 0,
+                }
+            else:
+                return {
+                    "rows_affected": result.rowcount,
+                    "operation": "UPDATE/DELETE",
+                    "success": result.rowcount > 0,
+                }

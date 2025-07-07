@@ -9,3 +9,6 @@ INSERT_NAV_DROPDOWNS: |
 
 INSERT_NAV_DROPDOWN_ROLES: |
   INSERT INTO nav_dropdown_roles (nav_dropdown_id, role_id) VALUES (:nav_dropdown_id, :role_id);
+
+INSERT_NAV_ITEMS: |
+  INSERT INTO nav_items (label, href, sort_order) VALUES ( :label, :href, :sort_order) RETURNING id;
