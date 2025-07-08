@@ -1,4 +1,0 @@
-{
-  "COMBO_TABLE_LIST": "SELECT ROW_NUMBER() OVER () AS value, tablename as label FROM pg_catalog.pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema');",
-  "COMBo_ROLE_LIST": "select id as value ,name as label from roles"
-}

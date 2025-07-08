@@ -15,3 +15,21 @@ SELECT_USERS_ALL: |
 
 SELECT_CODE_CATEGORIES_ALL: |
   select * from code_categories
+
+SELECT_CODES_ALL_OLD: |
+  SELECT code_id, category_id, code_value, code_name, description, sort_order, is_active FROM codes;
+
+SELECT_CODES_ALL: |
+  SELECT 
+    c.code_id,
+    c.category_id,
+    cc.category_name,
+    c.code_value,
+    c.code_name,
+    c.description,
+    c.sort_order,
+    c.is_active
+  FROM 
+    codes c
+  JOIN 
+    code_categories cc ON c.category_id = cc.category_id;

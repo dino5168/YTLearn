@@ -15,3 +15,7 @@ INSERT_NAV_ITEMS: |
 
 INSERT_CODE_CATEGORIES: |
   INSERT INTO code_categories (category_code, category_name, description) VALUES ( :category_code, :category_name, :description) RETURNING category_id;
+
+INSERT_CODES: |
+  INSERT INTO codes (category_id, code_value, code_name, description, sort_order,parent_code_id) 
+  VALUES ( :category_id, :code_value, :code_name, :description, :sort_order,:parent_code_id) RETURNING code_id;

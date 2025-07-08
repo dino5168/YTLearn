@@ -1,4 +1,7 @@
 #使用 /DBQyery/{sql_key} = 參數 給 tableName
+TABLE_LIST: |
+  SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema');
+
 TABLE_SCHEMAT_COMMENT: |
   SELECT
       cols.attname AS column_name,

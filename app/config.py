@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     FRONTEDN_GOOGLE_SUCCESS: str
     CORS_ALLOW: str = "http://127.0.0.1:3000"
     DB_CONNECT_STRING: str = "postgresql://postgres:0936284791@localhost:5432/videos"
+    UPLOAD_DIR: Path  # 預設上傳目錄
 
     class Config:
         env_file = ".env"  # 指定 .env 檔案路徑

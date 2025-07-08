@@ -14,3 +14,9 @@ UPDATE_CODE_CATEGORIES: |
   UPDATE code_categories 
     SET  category_code = :category_code, category_name = :category_name, description = :description
     WHERE category_id = :category_id;
+
+UPDATE_CODES: |
+  UPDATE codes 
+    SET  category_id = :category_id, code_value = :code_value, code_name = :code_name, description = :description, sort_order = :sort_order
+     ,parent_code_id = :parent_code_id
+    WHERE code_id = :code_id;

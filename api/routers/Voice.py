@@ -3,12 +3,19 @@ import os
 import uuid
 import shutil
 
-from fastapi import APIRouter, Query, File, UploadFile
+from fastapi import APIRouter, Depends, Query, File, UploadFile
 from fastapi.responses import JSONResponse
 from typing import List, Optional
 from pydantic import BaseModel
 from fastapi.responses import JSONResponse
 from datetime import datetime
+from app.config import settings
+from lib_util.Auth import get_current_user  # Import the dependency
+
+from lib_db.models.User import User
+
+UPLOAD_DIR = settings.UPLOAD_DIR
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 voice_router = APIRouter(
@@ -256,7 +263,7 @@ En_Voices = {
 }
 
 # 確保 uploads 目錄存在
-UPLOAD_DIR = "c:/temp/uploads"
+# UPLOAD_DIR = "c:/temp/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
@@ -330,12 +337,24 @@ async def generate_tts(data: TTSRequest):
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
 
+# # 語音錄製上傳
 @voice_router.post("/recorder")
-async def upload_voice(file: UploadFile = File(...)):
+async def upload_voice(
+    file: UploadFile = File(...), current_user: User = Depends(get_current_user)
+):
     try:
+        print(current_user.email)  # 確認使用者已登入
+        print(current_user.id)  # 使用者 ID
+        current_user.name
+
+        save_user_path = os.path.join(
+            UPLOAD_DIR, f"{current_user.id}_{current_user.name}"
+        )
+        os.makedirs(save_user_path, exist_ok=True)
+
         ext = os.path.splitext(file.filename)[1] or ".webm"
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        save_path = os.path.join(UPLOAD_DIR, f"recording_{timestamp}{ext}")
+        save_path = os.path.join(save_user_path, f"recording_{timestamp}{ext}")
 
         with open(save_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
