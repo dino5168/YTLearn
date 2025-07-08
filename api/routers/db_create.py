@@ -16,6 +16,9 @@ sql_loader = get_sql_loader()
 async def insert_post(
     sql_key: str, payload: dict = Body(...), db: AsyncSession = Depends(get_async_db)
 ):
+    print("Table insert")
+    print(f"SQL Key: {sql_key}")
+    print(f"Payload: {payload}")
     try:
         executor = SQLQueryExecutor(sql_loader, db)
         result = await executor.execute(sql_key, payload)

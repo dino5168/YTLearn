@@ -6,3 +6,6 @@ DELETE_NAV_ITEM_ROLES: |
 
 DELETE_NAV_DROPDOWN_ROLES: |
   DELETE FROM nav_dropdown_roles WHERE role_id = :role_id;
+
+DELETE_CODE_CATEGORIES: |
+  DELETE FROM code_categories WHERE category_id = :category_id;

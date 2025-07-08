@@ -12,3 +12,6 @@ INSERT_NAV_DROPDOWN_ROLES: |
 
 INSERT_NAV_ITEMS: |
   INSERT INTO nav_items (label, href, sort_order) VALUES ( :label, :href, :sort_order) RETURNING id;
+
+INSERT_CODE_CATEGORIES: |
+  INSERT INTO code_categories (category_code, category_name, description) VALUES ( :category_code, :category_name, :description) RETURNING category_id;

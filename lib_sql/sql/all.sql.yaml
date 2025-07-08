@@ -12,3 +12,6 @@ SELECT_NAV_ITEM_ROLES_ALL: |
 
 SELECT_USERS_ALL: |
   select * from users
+
+SELECT_CODE_CATEGORIES_ALL: |
+  select * from code_categories
