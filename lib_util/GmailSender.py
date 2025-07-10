@@ -10,21 +10,15 @@ from typing import List, Optional
 # 加入專案根目錄
 # sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 # 讀取設定檔
-# from app.config import Settings
+from app.config import Settings
 
 
-# EMAIL_HOST = Settings.EMAIL_HOST
-# EMAIL_PORT = Settings.EMAIL_PORT
+EMAIL_HOST = Settings.EMAIL_HOST
+EMAIL_PORT = Settings.EMAIL_PORT
 
-# EMAIL_PASSWORD = Settings.EMAIL_PASSWORD
-# EMAIL_FROM = Settings.EMAIL_FROM
-# EMAIL_VERIFY_DOMAIN = Settings.EMAIL_VERIFY_DOMAIN  # 替換為你的域名
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_PASSWORD = "gibb beek ehbd ufid"  # 使用應用程式密碼，不是登入密碼
-EMAIL_FROM = "dino5168@gmail.com"
-
-EMAIL_VERIFY_DOMAIN = "localhost:3000"  # 替換為你的域名
+EMAIL_PASSWORD = Settings.EMAIL_PASSWORD
+EMAIL_FROM = Settings.EMAIL_FROM
+EMAIL_VERIFY_DOMAIN = Settings.EMAIL_VERIFY_DOMAIN  # 替換為你的域名
 
 
 class GmailSender:
