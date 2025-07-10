@@ -48,3 +48,58 @@ PRIMARY KEY (user_id, role_id),
 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
 );
+
+-- Table: public.users
+
+-- DROP TABLE IF EXISTS public.users;
+
+CREATE TABLE IF NOT EXISTS public.users
+(
+id integer NOT NULL DEFAULT nextval('users_id_seq'::regclass),
+email text COLLATE pg_catalog."default" NOT NULL,
+name text COLLATE pg_catalog."default",
+avatar_url text COLLATE pg_catalog."default",
+google_id text COLLATE pg_catalog."default",
+created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+is_active boolean DEFAULT true,
+role_id integer,
+CONSTRAINT users_pkey PRIMARY KEY (id),
+CONSTRAINT users_email_key UNIQUE (email),
+CONSTRAINT users_role_id_fkey FOREIGN KEY (role_id)
+REFERENCES public.roles (id) MATCH SIMPLE
+ON UPDATE NO ACTION
+ON DELETE NO ACTION
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.users
+OWNER to postgres;
+
+COMMENT ON COLUMN public.users.id
+IS '識別子';
+
+COMMENT ON COLUMN public.users.email
+IS '電子郵件';
+
+COMMENT ON COLUMN public.users.name
+IS '使用者名稱';
+
+COMMENT ON COLUMN public.users.avatar_url
+IS 'Google 頭像';
+
+COMMENT ON COLUMN public.users.google_id
+IS 'Google 給的 ID';
+
+COMMENT ON COLUMN public.users.created_at
+IS '建立日期';
+
+COMMENT ON COLUMN public.users.updated_at
+IS '修改日期';
+
+COMMENT ON COLUMN public.users.is_active
+IS '是否使用';
+
+COMMENT ON COLUMN public.users.role_id
+IS '使用者角色 ID，為 NULL 表示訪客';

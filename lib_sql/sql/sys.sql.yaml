@@ -2,6 +2,7 @@
 TABLE_LIST: |
   SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema');
 
+#設定 資料表格欄位描述
 TABLE_SCHEMAT_COMMENT: |
   SELECT
       cols.attname AS column_name,
@@ -22,3 +23,23 @@ TABLE_SCHEMAT_COMMENT: |
       AND NOT cols.attisdropped
   ORDER BY
       cols.attnum;
+
+#檢核使用者 email 是否存在
+# 使用 :email 參數傳入 email 字串
+CHECK_USER_EMAIL: |
+  SELECT 1 FROM users WHERE email = :email LIMIT 1;
+
+#設定使用者 email 驗證狀態為已驗證 與 密碼
+UPDATE_USER_EMAIL_VERIFY: |
+  UPDATE users SET email_verified = true, password_hash = :password_hash WHERE email = :email;
+
+#新增使用者
+INSERT_USER_BY_REGISTER: |
+  INSERT INTO users (email, password_hash, email_verified)
+  VALUES (:email, :password_hash, true)
+  RETURNING id;
+#使用Email 查詢使用者資料
+GET_USER_BY_EMAIL: |
+  SELECT * FROM users WHERE email = :email;
+
+#更新使用者資料

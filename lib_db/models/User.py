@@ -5,7 +5,8 @@ from lib_db.models.user_roles import user_roles
 
 Base = declarative_base()
 
-#2025-07-06 加入 role_id
+
+# 2025-07-06 加入 role_id
 class User(Base):
     __tablename__ = "users"
 
@@ -17,7 +18,8 @@ class User(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     is_active = Column(Boolean, default=True)
-    role_id = Column(Integer,nullable=True) 
+    last_login_at = Column(DateTime, nullable=True)
+    role_id = Column(Integer, nullable=True)
 
     # 多對多關聯
     # roles = relationship(Role, secondary=user_roles, back_populates="users")

@@ -31,4 +31,4 @@ def batch_convert_wma_in_folder(folder_path: str):
 
 
 # ✅ 使用方式：指定資料夾
-batch_convert_wma_in_folder(r"C:\temp")
+batch_convert_wma_in_folder(r"C:\temp\b")

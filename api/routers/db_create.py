@@ -32,7 +32,10 @@ async def insert_post(
 async def insert_m_post(
     sql_key: str, payload: dict = Body(...), db: AsyncSession = Depends(get_async_db)
 ):
+    print("Table insert M")
+    print(f"SQL Key: {sql_key}")
     try:
+        print(payload)
         # 驗證 payload 結構
         if not isinstance(payload, dict):
             raise HTTPException(status_code=400, detail="Invalid payload format")
@@ -51,12 +54,14 @@ async def insert_m_post(
         # 獲取 SQL 語句
         sqldeleteMain = sql_loader.get_sql("DELETE_NAV_ITEM_ROLES")
         sqldeleteDrop = sql_loader.get_sql("DELETE_NAV_DROPDOWN_ROLES")
+
         sqlmain = sql_loader.get_sql("INSERT_NAV_ITEM_ROLES")
         sqlsub = sql_loader.get_sql("INSERT_NAV_DROPDOWN_ROLES")
 
         # 轉換為 SQLAlchemy text 對象
         sql_delete_main = text(sqldeleteMain)
         sql_delete_drop = text(sqldeleteDrop)
+
         sql_insert_main = text(sqlmain)
         sql_insert_sub = text(sqlsub)
 

@@ -8,10 +8,10 @@ from datetime import datetime, timedelta, timezone
 import jwt
 import requests
 
-from lib_auth.jwt_utils import create_jwt
+# from lib_auth.jwt_utils import create_jwt
 
 # User
-from lib_db.schemas.User import UserRead  # Pydantic Schema
+# from lib_db.schemas.User import UserRead  # Pydantic Schema
 from lib_db.models.User import User
 from lib_db.db.database import get_db
 from pydantic import BaseModel
@@ -30,8 +30,9 @@ GOOGLE_CALL_BACK_URL = settings.GOOGLE_CALL_BACK_URL
 GOOGLE_REDIRECT_URL = settings.GOOGLE_REDIRECT_URL
 GOOGLE_TOKEN_URL = settings.GOOGLE_TOKEN_URL
 FRONTEDN_GOOGLE_SUCCESS = settings.FRONTEDN_GOOGLE_SUCCESS
+ADMIN_EMAIL = settings.ADMIN_EMAIL = settings.ADMIN_EMAIL
 
-auth_router = APIRouter(prefix="/auth", tags=["auth"])
+auth_google = APIRouter(prefix="/auth", tags=["auth"])
 
 
 class LoginResponse(BaseModel):
@@ -59,7 +60,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
-@auth_router.get("/google")
+@auth_google.get("/google")
 def get_google_auth_url():
     """取得 Google OAuth 授權 URL"""
     # print("取得 Google OAuth 授權 URL")
@@ -76,16 +77,17 @@ def get_google_auth_url():
     return {"auth_url": auth_url}
 
 
-@auth_router.get("/google/callback")
+@auth_google.get("/google/callback")
 def google_callback(request: Request, db: Session = Depends(get_db)):
     """處理 Google OAuth 回調"""
     print("處理 Google OAuth 回調")
     code = request.query_params.get("code")
     error = request.query_params.get("error")
+    # 如果有錯誤，則返回錯誤訊息 ; 使用者取消授權
 
     if error:
         print("login error")
-        return RedirectResponse(f"{FRONTEND_URL}/login?error={error}")
+        return RedirectResponse(f"{FRONTEND_URL}/")
 
     if not code:
         print("Authorization code not provided")
@@ -121,8 +123,18 @@ def google_callback(request: Request, db: Session = Depends(get_db)):
 
         # 讀取使用者資訊
         email = idinfo.get("email")
+
         if not email:
             raise HTTPException(status_code=400, detail="No email in token")
+
+        email_verified = idinfo.get("email_verified")
+        # email 是否認證
+        if not email_verified:
+            raise HTTPException(status_code=400, detail="Email not verified")
+
+        default_role_id = 6  # 預設角色 ID，根據實際情況調整
+        if email == ADMIN_EMAIL:
+            default_role_id = 1
 
         name = idinfo.get("name", "")
         avatar_url = idinfo.get("picture", "")
@@ -138,7 +150,9 @@ def google_callback(request: Request, db: Session = Depends(get_db)):
                 google_id=google_id,
                 avatar_url=avatar_url,
                 is_active=True,
+                role_id=default_role_id,  # 預設角色 ID，根據實際情況調整
                 created_at=datetime.now(),
+                last_login_at=datetime.now(),
             )
             db.add(user)
             db.commit()
@@ -147,7 +161,7 @@ def google_callback(request: Request, db: Session = Depends(get_db)):
             user.name = name
             user.avatar_url = avatar_url
             user.google_id = google_id
-            user.last_login = datetime.now()
+            user.last_login_at = datetime.now()
             db.commit()
 
         # 產生 JWT
@@ -179,7 +193,7 @@ def google_callback(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Authentication failed: {str(e)}")
 
 
-@auth_router.post("/verify")
+@auth_google.post("/verify")
 def verify_token(request: Request):
     """驗證 JWT token"""
     print("驗證 JWT token")
@@ -198,7 +212,7 @@ def verify_token(request: Request):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
-@auth_router.post("/logout")
+@auth_google.post("/logout")
 def logout(response: Response):
     """登出（前端需要清除 token）"""
     """

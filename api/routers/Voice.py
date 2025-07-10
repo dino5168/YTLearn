@@ -15,8 +15,9 @@ from lib_util.Auth import get_current_user  # Import the dependency
 from lib_db.models.User import User
 
 UPLOAD_DIR = settings.UPLOAD_DIR
+TTS_DIR = settings.TTS_DIR
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-
+os.makedirs(TTS_DIR, exist_ok=True)
 
 voice_router = APIRouter(
     prefix="/voices",
@@ -305,22 +306,31 @@ def list_voices(
     return {"count": len(results), "voices": results}
 
 
+## 語音合成
 @voice_router.post("/tts")
-async def generate_tts(data: TTSRequest):
+async def generate_tts(
+    data: TTSRequest, current_user: User = Depends(get_current_user)
+):
     voice = data.voice_id
     text = data.text.strip()
+    print(f"Current User: {current_user.email}")  # 確認使用者已登入
+    print(f"Voice ID: {voice}")  # 語音 ID
 
     if not text:
         return JSONResponse(content={"error": "text is empty"}, status_code=400)
 
     try:
         # 建立 output 資料夾（如果還沒建立）
-        output_dir = "c:/temp/output_audio"
+        output_dir = TTS_DIR
         os.makedirs(output_dir, exist_ok=True)
 
+        save_user_path = os.path.join(TTS_DIR, f"{current_user.id}_{current_user.name}")
+        os.makedirs(save_user_path, exist_ok=True)
+
         # 建立唯一檔名
-        filename = f"{uuid.uuid4().hex}.mp3"
-        output_path = os.path.join(output_dir, filename)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{timestamp}.mp3"
+        output_path = os.path.join(save_user_path, filename)
 
         # 使用 edge-tts 進行語音合成
         communicate = edge_tts.Communicate(text, voice=voice)

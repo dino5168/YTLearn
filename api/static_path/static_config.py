@@ -10,9 +10,15 @@ THUMBNAILS_URL_PATH = settings.THUMBNAILS_URL_PATH
 
 SRT_DIR = settings.SRT_DIR
 SRT_URL_PATH = settings.SRT_URL_PATH
+
 # 確保目錄存在
 THUMBNAILS_DIR.mkdir(parents=True, exist_ok=True)
 SRT_DIR.mkdir(parents=True, exist_ok=True)
+#
+SAMPLE_VOICE_DIR = settings.SAMPLE_VOICE_DIR
+SAMPLE_VOICE_URL = settings.SAMPLE_VOICE_URL
+# 確保樣本語音目錄存在
+# http://localhost:8000/sample_voice/02_William.mp3
 
 
 def mount_static(app: FastAPI):
@@ -21,3 +27,8 @@ def mount_static(app: FastAPI):
         THUMBNAILS_URL_PATH, StaticFiles(directory=THUMBNAILS_DIR), name="thumbnails"
     )
     app.mount(SRT_URL_PATH, StaticFiles(directory=SRT_DIR), name="srt")
+    app.mount(
+        SAMPLE_VOICE_URL,
+        StaticFiles(directory=SAMPLE_VOICE_DIR),
+        name="sample_voice",
+    )  # 掛載樣本語音目錄

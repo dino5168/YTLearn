@@ -6,7 +6,11 @@ from api.routers.Subtitle import subtitle_router  # 匯入你的子路由
 from api.routers.Admin import admin_router
 from api.routers.Voice import voice_router
 from api.routers.Util import util_router
-from api.routers.auth import auth_router
+
+# auth
+from api.routers.auth_google import auth_google
+from api.routers.auth_email import auth_email  # 匯入你的子路由
+
 from api.routers.Nav import nav_router
 from api.routers.db_query import db_query_router
 from api.routers.Common import common_router
@@ -19,8 +23,11 @@ from api.routers.db_update import db_update_router
 
 # 這個會很耗資源 先 mark 起來
 # from api.routers.Transcribe import transcribe_router
+
+#
 from app.start_message import lifespan  # ✅ 引入 lifespan 顯示 啟動訊息
 from app.config import settings  # 讀取設定檔
+from middlewares import IPGeoMiddleware
 from middlewares.cors import setup_cors  # ✅ CORS 設定模組
 from api.static_path.static_config import mount_static  # 靜態路徑
 
@@ -44,7 +51,10 @@ app.include_router(subtitle_router)
 app.include_router(admin_router)
 app.include_router(voice_router)
 app.include_router(util_router)
-app.include_router(auth_router)
+# auth
+app.include_router(auth_google)
+app.include_router(auth_email)  # 掛載 auth_email 路由
+#
 app.include_router(db_query_router)
 app.include_router(common_router)
 # create 2025-07-03
@@ -54,6 +64,7 @@ app.include_router(db_delete_router)
 
 app.include_router(query_router)
 app.include_router(create_router)
+# 這個會很耗資源 先 mark 起來
 # app.include_router(transcribe_router)
 
 # 設定日誌
@@ -68,6 +79,7 @@ logger = logging.getLogger(__name__)
 
 # ✅ 加入 CORS
 setup_cors(app)
+# app.add_middleware(IPGeoMiddleware, geoip_db_path=settings.GEOIP_DB_PATH)
 
 if __name__ == "__main__":
     import uvicorn

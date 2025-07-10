@@ -26,6 +26,18 @@ class Settings(BaseSettings):
     CORS_ALLOW: str = "http://127.0.0.1:3000"
     DB_CONNECT_STRING: str = "postgresql://postgres:0936284791@localhost:5432/videos"
     UPLOAD_DIR: Path  # 預設上傳目錄
+    TTS_DIR: Path  # 語音合成目錄
+
+    SAMPLE_VOICE_URL: str = "/sample_voice"  # 樣本語音 URL 路徑
+    SAMPLE_VOICE_DIR: Path  # 樣本語音目錄
+
+    #  郵件設定
+    EMAIL_HOST: str = "smtp.gmail.com"
+    EMAIL_PORT: int = 587  # 郵件伺服器端口
+    EMAIL_PASSWORD: str = ""  # 郵件密碼
+    EMAIL_FROM: str = ""  # 郵件發件人地址
+    EMAIL_VERIFY_DOMAIN: str = "http://localhost:3000"  # 替換為你的域名
+    ADMIN_EMAIL: str
 
     class Config:
         env_file = ".env"  # 指定 .env 檔案路徑

@@ -459,6 +459,9 @@ async def get_nav_links(
         role_id = role_id
         nav_items = []
         nav_items = getNavLinksByRoleID(db, role_id)
+        print(f"Role ID: {role_id}")
+
+        print(nav_items)
         # 標註是否選取
         nav_items_all = mark_selected(result, nav_items)
         return nav_items_all
