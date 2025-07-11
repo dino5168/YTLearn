@@ -1,196 +1,414 @@
 import smtplib
+import os
+import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
-import os
+from typing import List, Optional, Dict, Any
+from dataclasses import dataclass
+from abc import ABC, abstractmethod
 import sys
-from typing import List, Optional
+from pathlib import Path
+from app.config import settings
 
-# 加入專案根目錄
-# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# 設定日誌
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# 把專案根目錄加入 sys.path
+# BASE_DIR = Path(__file__).resolve().parent.parent  # 根據實際位置調整
+# sys.path.append(str(BASE_DIR))
+
 # 讀取設定檔
-from app.config import Settings
+# from app.config import Settings
 
 
-EMAIL_HOST = Settings.EMAIL_HOST
-EMAIL_PORT = Settings.EMAIL_PORT
+@dataclass
+class EmailConfig:
+    """郵件設定類別"""
 
-EMAIL_PASSWORD = Settings.EMAIL_PASSWORD
-EMAIL_FROM = Settings.EMAIL_FROM
-EMAIL_VERIFY_DOMAIN = Settings.EMAIL_VERIFY_DOMAIN  # 替換為你的域名
+    host: str
+    port: int
+    username: str
+    password: str
+    from_email: str
+    verify_domain: str
+    use_tls: bool = True
+
+    @classmethod
+    def from_settings(cls) -> "EmailConfig":
+        """從設定檔載入郵件設定"""
+        return cls(
+            host=settings.EMAIL_HOST,
+            port=settings.EMAIL_PORT,
+            username=settings.ADMIN_EMAIL,
+            password=settings.EMAIL_PASSWORD,
+            from_email=settings.ADMIN_EMAIL,
+            verify_domain=settings.EMAIL_VERIFY_DOMAIN,
+        )
 
 
-class GmailSender:
-    def __init__(self, email: str, password: str):
-        """
-        初始化 Gmail 發送器
+@dataclass
+class EmailMessage:
+    """郵件訊息類別"""
 
-        Args:
-            email: Gmail 帳號
-            password: Gmail 應用程式密碼 (不是登入密碼)
+    to_emails: List[str]
+    subject: str
+    body: str
+    is_html: bool = False
+    attachments: Optional[List[str]] = None
 
-        注意：需要開啟 Gmail 的兩步驟驗證並生成應用程式密碼
-        """
-        self.email = EMAIL_FROM
-        self.password = EMAIL_PASSWORD
-        self.smtp_server = EMAIL_HOST
-        self.smtp_port = EMAIL_PORT
+    def __post_init__(self):
+        """驗證郵件訊息"""
+        if not self.to_emails:
+            raise ValueError("收件人不能為空")
+        if not self.subject:
+            raise ValueError("主題不能為空")
+        if not self.body:
+            raise ValueError("郵件內容不能為空")
 
-    def send_email(
-        self,
-        to_emails: List[str],
-        subject: str,
-        body: str,
-        is_html: bool = False,
-        attachments: Optional[List[str]] = None,
-    ) -> bool:
+
+class EmailSenderResult:
+    """郵件發送結果類別"""
+
+    def __init__(
+        self, success: bool, message: str = "", error: Optional[Exception] = None
+    ):
+        self.success = success
+        self.message = message
+        self.error = error
+
+    def __bool__(self):
+        return self.success
+
+
+class EmailSender(ABC):
+    """抽象郵件發送器基類"""
+
+    @abstractmethod
+    def send_email(self, email_message: EmailMessage) -> EmailSenderResult:
+        """發送郵件"""
+        pass
+
+
+class SMTPEmailSender(EmailSender):
+    """SMTP 郵件發送器"""
+
+    def __init__(self, config: EmailConfig):
+        self.config = config
+
+    def send_email(self, email_message: EmailMessage) -> EmailSenderResult:
         """
         發送郵件
 
         Args:
-            to_emails: 收件人列表
-            subject: 郵件主題
-            body: 郵件內容
-            is_html: 是否為 HTML 格式
-            attachments: 附件文件路徑列表
+            email_message: 郵件訊息物件
 
         Returns:
-            bool: 發送成功返回 True，失敗返回 False
+            EmailSenderResult: 發送結果
         """
         try:
             # 建立郵件物件
-            msg = MIMEMultipart()
-            msg["From"] = self.email
-            msg["To"] = ", ".join(to_emails)
-            msg["Subject"] = subject
-
-            # 添加郵件內容
-            if is_html:
-                msg.attach(MIMEText(body, "html", "utf-8"))
-            else:
-                msg.attach(MIMEText(body, "plain", "utf-8"))
+            msg = self._create_message(email_message)
 
             # 添加附件
-            if attachments:
-                for file_path in attachments:
-                    if os.path.exists(file_path):
-                        with open(file_path, "rb") as attachment:
-                            part = MIMEBase("application", "octet-stream")
-                            part.set_payload(attachment.read())
-                            encoders.encode_base64(part)
-                            part.add_header(
-                                "Content-Disposition",
-                                f"attachment; filename= {os.path.basename(file_path)}",
-                            )
-                            msg.attach(part)
-
-            # 連接到 Gmail SMTP 伺服器
-            server = smtplib.SMTP(self.smtp_server, self.smtp_port)
-            server.starttls()  # 啟用 TLS 加密
-            server.login(self.email, self.password)
+            if email_message.attachments:
+                self._add_attachments(msg, email_message.attachments)
 
             # 發送郵件
-            text = msg.as_string()
-            server.sendmail(self.email, to_emails, text)
-            server.quit()
+            self._send_message(msg, email_message.to_emails)
 
-            print(f"郵件已成功發送到: {', '.join(to_emails)}")
-            return True
+            success_message = f"郵件已成功發送到: {', '.join(email_message.to_emails)}"
+            logger.info(success_message)
+            return EmailSenderResult(success=True, message=success_message)
 
         except Exception as e:
-            print(f"發送郵件時發生錯誤: {str(e)}")
-            return False
+            error_message = f"發送郵件時發生錯誤: {str(e)}"
+            logger.error(error_message)
+            return EmailSenderResult(success=False, message=error_message, error=e)
 
-    def send_verification_email(
-        self, email: str, token: str, domain: str = EMAIL_VERIFY_DOMAIN
-    ) -> bool:
+    def _create_message(self, email_message: EmailMessage) -> MIMEMultipart:
+        """建立郵件訊息物件"""
+        msg = MIMEMultipart()
+        msg["From"] = self.config.from_email
+        msg["To"] = ", ".join(email_message.to_emails)
+        msg["Subject"] = email_message.subject
+
+        # 添加郵件內容
+        content_type = "html" if email_message.is_html else "plain"
+        msg.attach(MIMEText(email_message.body, content_type, "utf-8"))
+
+        return msg
+
+    def _add_attachments(self, msg: MIMEMultipart, attachments: List[str]) -> None:
+        """添加附件"""
+        for file_path in attachments:
+            if not os.path.exists(file_path):
+                logger.warning(f"附件檔案不存在: {file_path}")
+                continue
+
+            try:
+                with open(file_path, "rb") as attachment_file:
+                    part = MIMEBase("application", "octet-stream")
+                    part.set_payload(attachment_file.read())
+                    encoders.encode_base64(part)
+                    part.add_header(
+                        "Content-Disposition",
+                        f"attachment; filename= {os.path.basename(file_path)}",
+                    )
+                    msg.attach(part)
+            except Exception as e:
+                logger.error(f"添加附件時發生錯誤 {file_path}: {str(e)}")
+
+    def _send_message(self, msg: MIMEMultipart, to_emails: List[str]) -> None:
+        """發送郵件訊息"""
+        with smtplib.SMTP(self.config.host, self.config.port) as server:
+            if self.config.use_tls:
+                server.starttls()
+            server.login(self.config.username, self.config.password)
+            text = msg.as_string()
+            server.sendmail(self.config.from_email, to_emails, text)
+
+
+class EmailTemplateService:
+    """郵件範本服務"""
+
+    @staticmethod
+    def create_verification_email(email: str, token: str, domain: str) -> EmailMessage:
         """
-        發送驗證郵件
+        建立驗證郵件
 
         Args:
-            email: 收件人 email
-            token: 驗證 token
+            email: 收件人信箱
+            token: 驗證令牌
             domain: 網域名稱
 
         Returns:
-            bool: 發送成功返回 True，失敗返回 False
+            EmailMessage: 郵件訊息物件
         """
-        verification_link = f"http://{domain}/auth/verifyEmail?token={token}"
-        print(f"發送驗證郵件到: {email}  : {verification_link}")
+        verification_link = f"{domain}/auth/verifyEmail?token={token}"
+        logger.info(f"建立驗證郵件: {email} -> {verification_link}")
 
         subject = "📩 請驗證您的 Email"
 
-        # 純文字版本
-        text_body = f"""
-親愛的用戶，
-
-感謝您註冊我們的服務！
-
-請點擊以下連結完成 Email 驗證：
-{verification_link}
-
-如果您無法點擊連結，請複製並貼上到瀏覽器中。
-
-此驗證連結將在 24 小時後過期。
-
-如果您沒有註冊我們的服務，請忽略此郵件。
-
-謝謝！
-        """
-
-        # HTML 版本
         html_body = f"""
         <html>
-        <body>
-            <h2>Email 驗證</h2>
-            <p>親愛的用戶，</p>
-            <p>感謝您註冊我們的服務！</p>
-            <p>請點擊以下按鈕完成 Email 驗證：</p>
-            <div style="text-align: center; margin: 20px;">
-                <a href="{verification_link}" 
-                   style="background-color: #4CAF50; color: white; padding: 15px 32px; 
-                          text-decoration: none; display: inline-block; border-radius: 4px;">
-                    驗證 Email
-                </a>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #4CAF50; text-align: center;">Email 驗證</h2>
+                <p>親愛的用戶，</p>
+                <p>感謝您註冊我們的服務！</p>
+                <p>請點擊以下按鈕完成 Email 驗證：</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{verification_link}" 
+                       style="background-color: #4CAF50; color: white; padding: 15px 32px; 
+                              text-decoration: none; display: inline-block; border-radius: 4px;
+                              font-size: 16px; font-weight: bold;">
+                        驗證 Email
+                    </a>
+                </div>
+                <p>如果按鈕無法點擊，請複製以下連結到瀏覽器：</p>
+                <p style="word-break: break-all; background-color: #f4f4f4; padding: 10px; border-radius: 4px;">
+                    <a href="{verification_link}">{verification_link}</a>
+                </p>
+                <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 4px; margin: 20px 0;">
+                    <p style="margin: 0; font-weight: bold; color: #856404;">
+                        ⚠️ 此驗證連結將在 30 分鐘後過期。
+                    </p>
+                </div>
+                <p style="color: #666; font-size: 14px;">
+                    如果您沒有註冊我們的服務，請忽略此郵件。
+                </p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                <p style="text-align: center; color: #666; font-size: 12px;">
+                    此郵件由系統自動發送，請勿回覆。
+                </p>
             </div>
-            <p>如果按鈕無法點擊，請複製以下連結到瀏覽器：</p>
-            <p><a href="{verification_link}">{verification_link}</a></p>
-            <p><strong>此驗證連結將在 24 小時後過期。</strong></p>
-            <p>如果您沒有註冊我們的服務，請忽略此郵件。</p>
-            <p>謝謝！</p>
         </body>
         </html>
         """
 
-        return self.send_email(
+        return EmailMessage(
             to_emails=[email], subject=subject, body=html_body, is_html=True
         )
 
 
-# 使用範例
+class EmailService:
+    """郵件服務主類別"""
+
+    def __init__(self, sender: EmailSender, template_service: EmailTemplateService):
+        self.sender = sender
+        self.template_service = template_service
+
+    def send_email(self, email_message: EmailMessage) -> EmailSenderResult:
+        """發送郵件"""
+        return self.sender.send_email(email_message)
+
+    def send_verification_email(
+        self, email: str, token: str, domain: str
+    ) -> EmailSenderResult:
+        """
+        發送驗證郵件
+
+        Args:
+            email: 收件人信箱
+            token: 驗證令牌
+            domain: 網域名稱
+
+        Returns:
+            EmailSenderResult: 發送結果
+        """
+        email_message = self.template_service.create_verification_email(
+            email, token, domain
+        )
+        return self.send_email(email_message)
+
+    def send_welcome_email(self, email: str, username: str) -> EmailSenderResult:
+        """
+        發送歡迎郵件
+
+        Args:
+            email: 收件人信箱
+            username: 用戶名稱
+
+        Returns:
+            EmailSenderResult: 發送結果
+        """
+        subject = "🎉 歡迎加入我們的服務"
+        html_body = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h1 style="color: #4CAF50; text-align: center;">歡迎 {username}！</h1>
+                <p>感謝您加入我們的服務！</p>
+                <p>您已成功完成註冊，現在可以開始使用所有功能。</p>
+                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="color: #495057; margin-top: 0;">主要功能：</h3>
+                    <ul style="color: #6c757d;">
+                        <li>功能 1</li>
+                        <li>功能 2</li>
+                        <li>功能 3</li>
+                    </ul>
+                </div>
+                <p>如有任何問題，歡迎隨時聯繫我們的客服團隊。</p>
+                <p>謝謝！</p>
+            </div>
+        </body>
+        </html>
+        """
+
+        email_message = EmailMessage(
+            to_emails=[email], subject=subject, body=html_body, is_html=True
+        )
+
+        return self.send_email(email_message)
+
+
+class EmailForgotPasswordService:
+    """郵件服務寄送重設密碼"""
+
+    def __init__(self, sender: EmailSender, template_service: EmailTemplateService):
+        self.sender = sender
+        self.template_service = template_service
+
+    def send_email(self, email_message: EmailMessage) -> EmailSenderResult:
+        """發送郵件"""
+        return self.sender.send_email(email_message)
+
+    def send_password_email(
+        self, email: str, token: str, domain: str
+    ) -> EmailSenderResult:
+        """
+        發送驗證郵件
+
+        Args:
+            email: 收件人信箱
+            token: 驗證令牌
+            domain: 網域名稱
+
+        Returns:
+            EmailSenderResult: 發送結果
+        """
+        email_message = self.template_service.create_verification_email(
+            email, token, domain
+        )
+        return self.send_email(email_message)
+
+    def send_welcome_email(self, email: str, username: str) -> EmailSenderResult:
+        """
+        發送歡迎郵件
+
+        Args:
+            email: 收件人信箱
+            username: 用戶名稱
+
+        Returns:
+            EmailSenderResult: 發送結果
+        """
+        subject = "🎉 重設密碼-多媒體英語教學"
+        html_body = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <p>感謝您加入我們的服務！</p>
+                <p>您已成功完成註冊，現在可以開始使用所有功能。</p>
+                <p>如有任何問題，歡迎隨時聯繫我們的客服團隊。</p>
+                <p>謝謝！</p>
+            </div>
+        </body>
+        </html>
+        """
+
+        email_message = EmailMessage(
+            to_emails=[email], subject=subject, body=html_body, is_html=True
+        )
+
+        return self.send_email(email_message)
+
+
+def create_email_service() -> EmailService:
+    """建立郵件服務實例"""
+    config = EmailConfig.from_settings()
+    sender = SMTPEmailSender(config)
+    template_service = EmailTemplateService()
+    return EmailService(sender, template_service)
+
+
 def main():
-    # Gmail 配置
-    GMAIL_EMAIL = EMAIL_FROM
-    GMAIL_PASSWORD = EMAIL_PASSWORD  # 使用應用程式密碼，不是登入密碼
-    SEND_MAIL = "dino5168@gmail.com"
+    """主函式 - 使用範例"""
+    try:
+        # 建立郵件服務
+        email_service = create_email_service()
 
-    # 建立 Gmail 發送器
-    gmail_sender = GmailSender(GMAIL_EMAIL, GMAIL_PASSWORD)
-    gmail_sender.send_verification_email(SEND_MAIL, "token123456", EMAIL_VERIFY_DOMAIN)
+        # 測試收件人
+        test_email = "dino5168@gmail.com"
 
-    # 範例 1: 發送簡單文字郵件
+        # 範例 1: 發送驗證郵件
+        print("發送驗證郵件...")
+        result = email_service.send_verification_email(
+            email=test_email, token="token123456", domain="http://localhost:3000"
+        )
+        print(f"驗證郵件發送結果: {result.success} - {result.message}")
 
-    # 範例 2: 發送 HTML 郵件
-    html_content = """
-    <h1>歡迎使用我們的服務！</h1>
-    <p>這是一封 <strong>HTML 格式</strong> 的郵件。</p>
-    <ul>
-        <li>功能 1</li>
-        <li>功能 2</li>
-        <li>功能 3</li>
-    </ul>
-    """
+        # 範例 2: 發送歡迎郵件
+        print("\n發送歡迎郵件...")
+        result = email_service.send_welcome_email(email=test_email, username="測試用戶")
+        print(f"歡迎郵件發送結果: {result.success} - {result.message}")
+
+        # 範例 3: 發送自定義郵件
+        print("\n發送自定義郵件...")
+        custom_email = EmailMessage(
+            to_emails=[test_email],
+            subject="自定義郵件測試",
+            body="這是一封自定義的測試郵件。",
+            is_html=False,
+        )
+        result = email_service.send_email(custom_email)
+        print(f"自定義郵件發送結果: {result.success} - {result.message}")
+
+    except Exception as e:
+        logger.error(f"主程式執行錯誤: {str(e)}")
 
 
 if __name__ == "__main__":

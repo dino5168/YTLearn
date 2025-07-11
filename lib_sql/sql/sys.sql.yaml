@@ -27,7 +27,7 @@ TABLE_SCHEMAT_COMMENT: |
 #檢核使用者 email 是否存在
 # 使用 :email 參數傳入 email 字串
 CHECK_USER_EMAIL: |
-  SELECT 1 FROM users WHERE email = :email LIMIT 1;
+  SELECT email,user_status FROM users WHERE email = :email ;
 
 #設定使用者 email 驗證狀態為已驗證 與 密碼
 UPDATE_USER_EMAIL_VERIFY: |
@@ -35,11 +35,20 @@ UPDATE_USER_EMAIL_VERIFY: |
 
 #新增使用者
 INSERT_USER_BY_REGISTER: |
-  INSERT INTO users (email, password_hash, email_verified)
-  VALUES (:email, :password_hash, true)
+  INSERT INTO users (email, password_hash,role_id, email_verified)
+  VALUES (:email, :password_hash,:role_id, true)
   RETURNING id;
 #使用Email 查詢使用者資料
 GET_USER_BY_EMAIL: |
   SELECT * FROM users WHERE email = :email;
 
 #更新使用者資料
+UPDATE_USERS_USER_TOKEN: |
+  UPDATE users
+  SET user_token = :user_token
+  WHERE email = :email;
+
+#更新使用者狀態
+UPDATE_USERS_USER_STATUS: |
+  UPDATE users 
+  set user_status = :user_status where email = :email

@@ -1,17 +1,26 @@
+import logging
 from datetime import datetime
 
 # from pydoc import text
 
+from jose import JWTError
 from sqlalchemy import text
 
 from fastapi import APIRouter, Body, HTTPException, Depends, Request, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from api.routers.auth_google import create_access_token
 from lib_db.db.database import get_async_db
 from lib_db.models.User import User
 from lib_sql.sql_loader_singleton import get_sql_loader
 from lib_sql.SQLQueryExecutor import SQLQueryExecutor
+from lib_util.GmailSender import create_email_service
+from lib_common.ErrorDetail import ErrorDetail
+from lib_auth.user_token import create_email_verification_token, verify_email_token
+
+# 設定日誌
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 sql_loader = get_sql_loader()
 
@@ -30,32 +39,68 @@ class RegisterResponse(BaseModel):
     success: bool = True
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+    resend: bool = False
+    fingerprint: str
+
+
 # 輔助函數（需要根據實際情況實現）
-async def check_email_is_exists(db: AsyncSession, email: str) -> bool:
+async def check_email_is_exists(db: AsyncSession, email: str):
     """檢查郵箱是否存在於資料庫中"""
-    # 實際實現邏輯
     if not email:
         raise HTTPException(status_code=400, detail="Email is required")
-
-    # 使用 SQL 查詢檢查 Email 是否存在
-    # 這裡假設有一個 SQL 查詢語句 "CHECK_USER_EMAIL" 用於檢查 Email
-    # 執行 SQL 查詢
     # 注意：這裡的 "CHECK_USER_EMAIL" 是一個 SQL 查詢語句的名稱，
     # 需要在 SQL 文件中定義這個查詢語句。
-    print(f"Checking if email exists: {email}")
     if not db:
         raise HTTPException(status_code=500, detail="Database connection error")
     # 使用 SQLQueryExecutor 執行 SQL 查詢
-    # 假設 SQLQueryExecutor 已經實現了執行 SQL 查詢
     executor = SQLQueryExecutor(sql_loader, db)
     result = await executor.execute("CHECK_USER_EMAIL", {"email": email})
-    print(f"Email exists check result: {result}")
+    return result
 
-    # 模擬檢查 Email 是否存在的邏輯
-    # 實際應用中應該有查詢數據庫的邏輯
-    if result is not None and len(result) > 0:
-        return True
-    return False
+
+async def send_verification_email(email: str, loginToken: str) -> bool:
+    """發送驗證郵件"""
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+    # 實際實現邏輯
+    try:
+        email_service = create_email_service()
+        result = email_service.send_verification_email(
+            email=email, token=loginToken, domain="http://localhost:3000"
+        )
+        return result.success
+    except Exception as e:
+        logger.error(f"Error sending verification email: {str(e)}")
+        return False
+
+
+async def update_users_user_token(db: AsyncSession, email: str, token: str) -> None:
+    """更新使用者的郵箱驗證狀態"""
+    if not email or not token:
+        raise HTTPException(status_code=400, detail="Email and token are required")
+    # 實際實現邏輯
+    print("update_user_email_verify")
+    print(f"Updating user email verification for {email} with token {token}")
+    executor = SQLQueryExecutor(sql_loader, db)
+    result = await executor.execute(
+        "UPDATE_USERS_USER_TOKEN", {"email": email, "user_token": token}
+    )
+    if result is None:
+        raise HTTPException(
+            status_code=500, detail="Failed to update email verification"
+        )
+
+
+# 更新使用者狀態
+async def update_users_user_status(db: AsyncSession, email: str, user_status: int):
+    executor = SQLQueryExecutor(sql_loader, db)
+    result = await executor.execute(
+        "UPDATE_USERS_USER_STATUS", {"email": email, "user_status": user_status}
+    )
+    if result is None:
+        raise HTTPException(status_code=500, detail="Failed to bind account to email")
 
 
 async def bind_account_to_email(db: AsyncSession, email: str, password: str) -> None:
@@ -72,14 +117,24 @@ async def bind_account_to_email(db: AsyncSession, email: str, password: str) -> 
 
 
 # 新增使用者資料
-async def create_user(db: AsyncSession, email: str, password: str) -> None:
+async def create_user(db: AsyncSession, email: str, password: str):
     """創建新用戶"""
     print("create_user")
     print(f"Creating user with email: {email} and password hash: {password}")
+    default_role_id = 4
+    if email == "dino5168@gmail.com":
+        default_role_id = 1
     executor = SQLQueryExecutor(sql_loader, db)
-    result = await executor.execute(
-        "INSERT_USER_BY_REGISTER", {"email": email, "password_hash": password}
-    )
+    try:
+        # 使用 SQLQueryExecutor 執行 SQL 查詢
+        await executor.execute(
+            "INSERT_USER_BY_REGISTER",
+            {"email": email, "password_hash": password, "role_id": default_role_id},
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Error creating user: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create user")
 
 
 async def check_user_email_verification_status(db: AsyncSession, email: str) -> bool:
@@ -88,85 +143,38 @@ async def check_user_email_verification_status(db: AsyncSession, email: str) -> 
     pass
 
 
-async def send_verification_email(email: str) -> bool:
-    """發送驗證郵件"""
-    # 實際實現邏輯
-    pass
-
-
 @auth_email.get("/email/verify", response_model=dict)
-def verify_email(
-    request: Request,
-    token: str = Query(..., description="驗證 token"),
-):
-    """
-    驗證 Email 的 API
-    """
-    # 這裡應該有驗證 token 的邏輯
-    # 假設驗證成功，返回成功訊息
-    if not token:
-        raise HTTPException(status_code=400, detail="Token is required")
-
-    # 模擬驗證邏輯
-    if token == "valid_token":
-        return {"message": "Email verified successfully"}
-
-    raise HTTPException(status_code=400, detail="Invalid token")
-
-
-# 使用者 註冊帳號 需要加入驗證郵箱的功能 安全防護
-@auth_email.post("/register", response_model=RegisterResponse)
-async def user_register(
-    payload: RegisterRequest, db: AsyncSession = Depends(get_async_db)
-):
-    """
-    使用者註冊帳號的 API
-    這個 API 檢查郵箱是否存在，並發送驗證
-    """
+async def verify_email(token: str, db: AsyncSession = Depends(get_async_db)):
     try:
-        print(f"Check email exists payload: {payload.email}")
+        # 解碼 JWT token
+        print("receive token")
+        print(token)
+        verfify_email = verify_email_token(token)
 
-        # 修正：統一使用 payload.email 而不是 payload dict
-        email = payload.email
+        if not verfify_email:
+            raise HTTPException(status_code=400, detail="Invalid token payload")
 
-        # 檢查郵箱是否存在（假設這個函數需要調整參數）
-        # 原代碼中 check_email_is_exists 的調用方式不一致
-        is_email_exists = await check_email_is_exists(db, email)
-
-        if not is_email_exists:
-            # 如果郵箱不存在，則創建新用戶
-            # 發送驗證郵件
-            await create_user(db, email, payload.password)
-            print(f"Email {email} does not exist")
-        else:
-            # 如果郵箱已存在，則直接綁定帳號
-            print(f"Email {email} already exists, sending verification email")
-            # await bind_account_to_email(db, email, payload.password)
-
-        # raise HTTPException(status_code=404, detail="Email not found")
-        return RegisterResponse(
-            message="Email exists, verification email sent", success=True
+        # 查找對應的使用者
+        executor = SQLQueryExecutor(sql_loader, db)
+        users = await executor.execute("GET_USER_BY_EMAIL", {"email": verfify_email})
+        if not users:
+            raise HTTPException(status_code=404, detail="User not found")
+        user = users[0]  # ✅ 取出第一筆
+        # 更新驗證狀態
+        user_status = 1
+        if user["user_status"] == 2:
+            user_status = 3
+        result = await executor.execute(
+            "UPDATE_USERS_USER_STATUS",
+            {"email": verfify_email, "user_status": user_status},
         )
+        if not result:
+            raise HTTPException(status_code=404, detail="更新使用者狀態失敗")
 
-        # 檢查用戶是否已經驗證過郵箱
-        # is_user_verified = await check_user_email_verification_status(db, email)
+        return {"message": "Email verification successful"}
 
-        # if is_user_verified:
-        #   return EmailVerificationResponse(
-        #      message="Email is already verified", success=True
-        #    )
-
-        # 重新發送驗證郵件
-        # 實際應用中應該：
-        # 1. 生成新的驗證 token
-        # 2. 更新資料庫中的 token 記錄
-        # 3. 發送郵件
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Resend verification email error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+    except JWTError as e:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
 
 
 @auth_email.get("/email/status", response_model=dict)
@@ -203,25 +211,6 @@ def email_exists(
     exists = email == ""
 
 
-@auth_email.post("/login_", response_model=dict)
-def user_login(
-    request: Request,
-    email: str = Body(..., description="用戶的 Email 地址"),
-    password: str = Body(..., description="用戶的密碼"),
-):
-    """
-    使用者登入帳號的 API
-    """
-    print(f"Login request received for email: {email}")
-    if not email or not password:
-        raise HTTPException(status_code=400, detail="Email and password are required")
-
-    # 模擬登入邏輯
-    # 實際應用中應該有查詢數據庫的邏輯
-
-    return {"message": "Login successful", "email": email}
-
-
 @auth_email.post("/login", response_model=dict)
 async def user_login(
     request: Request,
@@ -249,13 +238,13 @@ async def user_login(
     print(f"User data retrieved: {user}")
 
     if not user or not user.password_hash:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=401, detail="無效帳號")
 
     # if not pwd_context.verify(password, user.password_hash):
     #   raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    if not user.is_active:
-        raise HTTPException(status_code=403, detail="User account is inactive")
+    if user.user_status == 0:
+        raise HTTPException(status_code=403, detail="使用者未認證")
 
     # 更新最後登入時間
     # user.last_login_at = datetime.now()
@@ -284,3 +273,79 @@ async def user_login(
             "role_id": user.role_id,
         },
     }
+
+
+# 使用者 註冊帳號 需要加入驗證郵箱的功能 安全防護
+@auth_email.post("/register", response_model=RegisterResponse)
+async def user_register(
+    payload: RegisterRequest, db: AsyncSession = Depends(get_async_db)
+):
+    email = payload.email
+    password = payload.password
+
+    is_email_exists = await check_email_is_exists(db, email)
+
+    if is_email_exists:
+        # 用戶存在，判斷狀態
+        if is_email_exists[0]["user_status"] != 0:
+            raise HTTPException(status_code=405, detail="使用者已經存在")
+    else:
+        # 用戶不存在，先建立新用戶（user_status=0 未驗證）
+        await create_user(db, email, password)
+
+    # 不論新用戶或舊用戶，只要尚未驗證都發送驗證信
+    token = create_email_verification_token(email)
+    await update_users_user_token(db, email, token)
+    result = await send_verification_email(email, token)
+
+    return RegisterResponse(
+        message="Verification email sent. 請至信箱點擊驗證連結完成註冊",
+        success=True,
+    )
+
+
+# 忘記密碼送出 password
+@auth_email.post("/forgotPassword", response_model=RegisterResponse)
+async def forgot_password(
+    payload: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_async_db),
+):
+    email = payload.email
+
+    is_email_exists = await check_email_is_exists(db, email)
+    if is_email_exists:
+        token = create_email_verification_token(email)
+        print(token)
+        # 假設你有一個專門處理忘記密碼重設的連結
+        # reset_url = f"https://your-site.com/auth/reset-password?token={token}"
+        # 寄送信件
+        # await send_email(
+        #     to=email,
+        #     subject="🔐 密碼重設連結",
+        #     html_content=f"""
+        #     <p>您好，請點擊下方連結以重設您的密碼（30分鐘內有效）：</p>
+        #     <a href="{reset_url}">{reset_url}</a>
+        #     """,
+        # )
+
+        return RegisterResponse(success=True, message="重設密碼信已寄出")
+    else:
+        # 安全性考量，不透露帳號不存在
+        return RegisterResponse(
+            success=True, message="若該信箱存在，已寄送重設密碼信件"
+        )
+
+    # 查詢用戶是否存在
+    # result = await db.execute(select(User).where(User.email == email))
+    # user = result.scalar_one_or_none()
+
+    # if not user:
+    # 安全性考量，不透露帳號不存在
+
+    # 產生驗證用 token
+
+    # 假設你有一個專門處理忘記密碼重設的連結
+    # reset_url = f"https://your-site.com/auth/reset-password?token={token}"
+
+    # optional: 紀錄 fingerprint / log...
+    # save_fingerprint_log(email, payload.fingerprint)
