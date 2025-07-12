@@ -52,3 +52,9 @@ UPDATE_USERS_USER_TOKEN: |
 UPDATE_USERS_USER_STATUS: |
   UPDATE users 
   set user_status = :user_status where email = :email
+
+#更新使用者密碼
+UPDATE_USERS_USER_PASSWORD: |
+  update users
+  set password_hash = :password_hash
+  where email = :email

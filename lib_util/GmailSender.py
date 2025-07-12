@@ -233,6 +233,71 @@ class EmailTemplateService:
             to_emails=[email], subject=subject, body=html_body, is_html=True
         )
 
+    # 重設密碼範本
+    @staticmethod
+    def create_reset_password_email(
+        email: str, token: str, domain: str
+    ) -> EmailMessage:
+        """
+        建立重設密碼郵件（忘記密碼）
+
+        Args:
+            email: 收件人信箱
+            token: 驗證令牌
+            domain: 網域名稱
+
+        Returns:
+            EmailMessage: 郵件訊息物件
+        """
+        reset_link = f"{domain}/auth/resetPassword?token={token}"
+        logger.info(f"建立重設密碼郵件: {email} -> {reset_link}")
+
+        subject = "🔐 重設您的密碼"
+
+        html_body = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #007BFF; text-align: center;">密碼重設請求</h2>
+                <p>您好，</p>
+                <p>我們收到了您重設密碼的請求。</p>
+                <p>請點擊下方按鈕以建立新密碼：</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{reset_link}" 
+                       style="background-color: #007BFF; color: white; padding: 15px 32px; 
+                              text-decoration: none; display: inline-block; border-radius: 4px;
+                              font-size: 16px; font-weight: bold;">
+                        重設密碼
+                    </a>
+                </div>
+                <p>如果按鈕無法點擊，請複製以下連結並貼到瀏覽器：</p>
+                <p style="word-break: break-all; background-color: #f4f4f4; padding: 10px; border-radius: 4px;">
+                    <a href="{reset_link}">{reset_link}</a>
+                </p>
+                <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 4px; margin: 20px 0;">
+                    <p style="margin: 0; font-weight: bold; color: #856404;">
+                        ⚠️ 此重設連結將在 30 分鐘後過期。
+                    </p>
+                </div>
+                <p style="color: #666; font-size: 14px;">
+                    如果您並未申請重設密碼，請忽略此郵件。
+                </p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                <p style="text-align: center; color: #666; font-size: 12px;">
+                    此郵件由系統自動發送，請勿回覆。
+                </p>
+            </div>
+        </body>
+        </html>
+        """
+
+        return EmailMessage(
+            to_emails=[email],
+            subject=subject,
+            body=html_body,
+            is_html=True,
+        )
+
 
 class EmailService:
     """郵件服務主類別"""
@@ -264,6 +329,25 @@ class EmailService:
         )
         return self.send_email(email_message)
 
+    def send_password_email(
+        self, email: str, token: str, domain: str
+    ) -> EmailSenderResult:
+        """
+        發送驗證郵件
+
+        Args:
+            email: 收件人信箱
+            token: 驗證令牌
+            domain: 網域名稱
+
+        Returns:
+            EmailSenderResult: 發送結果
+        """
+        email_message = self.template_service.create_reset_password_email(
+            email, token, domain
+        )
+        return self.send_email(email_message)
+
     def send_welcome_email(self, email: str, username: str) -> EmailSenderResult:
         """
         發送歡迎郵件
@@ -291,68 +375,6 @@ class EmailService:
                         <li>功能 3</li>
                     </ul>
                 </div>
-                <p>如有任何問題，歡迎隨時聯繫我們的客服團隊。</p>
-                <p>謝謝！</p>
-            </div>
-        </body>
-        </html>
-        """
-
-        email_message = EmailMessage(
-            to_emails=[email], subject=subject, body=html_body, is_html=True
-        )
-
-        return self.send_email(email_message)
-
-
-class EmailForgotPasswordService:
-    """郵件服務寄送重設密碼"""
-
-    def __init__(self, sender: EmailSender, template_service: EmailTemplateService):
-        self.sender = sender
-        self.template_service = template_service
-
-    def send_email(self, email_message: EmailMessage) -> EmailSenderResult:
-        """發送郵件"""
-        return self.sender.send_email(email_message)
-
-    def send_password_email(
-        self, email: str, token: str, domain: str
-    ) -> EmailSenderResult:
-        """
-        發送驗證郵件
-
-        Args:
-            email: 收件人信箱
-            token: 驗證令牌
-            domain: 網域名稱
-
-        Returns:
-            EmailSenderResult: 發送結果
-        """
-        email_message = self.template_service.create_verification_email(
-            email, token, domain
-        )
-        return self.send_email(email_message)
-
-    def send_welcome_email(self, email: str, username: str) -> EmailSenderResult:
-        """
-        發送歡迎郵件
-
-        Args:
-            email: 收件人信箱
-            username: 用戶名稱
-
-        Returns:
-            EmailSenderResult: 發送結果
-        """
-        subject = "🎉 重設密碼-多媒體英語教學"
-        html_body = f"""
-        <html>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                <p>感謝您加入我們的服務！</p>
-                <p>您已成功完成註冊，現在可以開始使用所有功能。</p>
                 <p>如有任何問題，歡迎隨時聯繫我們的客服團隊。</p>
                 <p>謝謝！</p>
             </div>

@@ -3,7 +3,7 @@ from datetime import datetime
 
 # from pydoc import text
 
-from jose import JWTError
+from jose import JWTError, jwt
 from sqlalchemy import text
 
 from fastapi import APIRouter, Body, HTTPException, Depends, Request, Query
@@ -11,19 +11,20 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from api.routers.auth_google import create_access_token
 from lib_db.db.database import get_async_db
-from lib_db.models.User import User
+
 from lib_sql.sql_loader_singleton import get_sql_loader
 from lib_sql.SQLQueryExecutor import SQLQueryExecutor
 from lib_util.GmailSender import create_email_service
 from lib_common.ErrorDetail import ErrorDetail
 from lib_auth.user_token import create_email_verification_token, verify_email_token
+from passlib.context import CryptContext
+from app.config import settings
 
 # 設定日誌
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 sql_loader = get_sql_loader()
-
 
 auth_email = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -68,7 +69,23 @@ async def send_verification_email(email: str, loginToken: str) -> bool:
     try:
         email_service = create_email_service()
         result = email_service.send_verification_email(
-            email=email, token=loginToken, domain="http://localhost:3000"
+            email=email, token=loginToken, domain=settings.EMAIL_VERIFY_DOMAIN
+        )
+        return result.success
+    except Exception as e:
+        logger.error(f"Error sending verification email: {str(e)}")
+        return False
+
+
+async def send_forgot_email(email: str, loginToken: str) -> bool:
+    """發送驗證郵件"""
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+    # print("send_forget_email")
+    try:
+        email_service = create_email_service()
+        result = email_service.send_password_email(
+            email=email, token=loginToken, domain=settings.EMAIL_VERIFY_DOMAIN
         )
         return result.success
     except Exception as e:
@@ -81,8 +98,6 @@ async def update_users_user_token(db: AsyncSession, email: str, token: str) -> N
     if not email or not token:
         raise HTTPException(status_code=400, detail="Email and token are required")
     # 實際實現邏輯
-    print("update_user_email_verify")
-    print(f"Updating user email verification for {email} with token {token}")
     executor = SQLQueryExecutor(sql_loader, db)
     result = await executor.execute(
         "UPDATE_USERS_USER_TOKEN", {"email": email, "user_token": token}
@@ -91,6 +106,23 @@ async def update_users_user_token(db: AsyncSession, email: str, token: str) -> N
         raise HTTPException(
             status_code=500, detail="Failed to update email verification"
         )
+
+
+async def update_users_user_password(
+    db: AsyncSession, email: str, newPassword: str
+) -> None:
+    """更新使用者的密碼重設密碼使用"""
+    if not email or not newPassword:
+        raise HTTPException(
+            status_code=400, detail="Email and newPassword are required"
+        )
+    # 實際實現邏輯
+    executor = SQLQueryExecutor(sql_loader, db)
+    result = await executor.execute(
+        "UPDATE_USERS_USER_PASSWORD", {"email": email, "password_hash": newPassword}
+    )
+    if result is None:
+        raise HTTPException(status_code=500, detail="Failed to update reset password")
 
 
 # 更新使用者狀態
@@ -304,7 +336,7 @@ async def user_register(
     )
 
 
-# 忘記密碼送出 password
+# 忘記密碼送出 forgot password
 @auth_email.post("/forgotPassword", response_model=RegisterResponse)
 async def forgot_password(
     payload: ForgotPasswordRequest,
@@ -315,7 +347,9 @@ async def forgot_password(
     is_email_exists = await check_email_is_exists(db, email)
     if is_email_exists:
         token = create_email_verification_token(email)
+        # await create_email_forget()
         print(token)
+        await send_forgot_email(settings.ADMIN_EMAIL, token)
         # 假設你有一個專門處理忘記密碼重設的連結
         # reset_url = f"https://your-site.com/auth/reset-password?token={token}"
         # 寄送信件
@@ -335,17 +369,38 @@ async def forgot_password(
             success=True, message="若該信箱存在，已寄送重設密碼信件"
         )
 
-    # 查詢用戶是否存在
+
+@auth_email.post("/resetPassword")
+async def reset_password(
+    token: str = Body(...),
+    newPassword: str = Body(...),
+    db: AsyncSession = Depends(get_async_db),
+):
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=["HS256"])
+        email = payload.get("sub")
+        print(newPassword)
+
+        if email is None:
+            raise HTTPException(status_code=400, detail="無效的 token")
+        is_emali = await check_email_is_exists(db, email)
+        if is_emali is None:
+            raise HTTPException(status_code=400, detail="無效的 Email")
+        await update_users_user_password(db, email, newPassword)
+        return RegisterResponse(success=True, message="重設密碼成功請使用新密碼登錄")
+
+    except JWTError:
+        raise HTTPException(status_code=400, detail="Token 驗證失敗或已過期")
+
+    # 查找使用者
+
     # result = await db.execute(select(User).where(User.email == email))
     # user = result.scalar_one_or_none()
+    # if user is None:
+    #    raise HTTPException(status_code=404, detail="使用者不存在")
 
-    # if not user:
-    # 安全性考量，不透露帳號不存在
+    # 更新密碼
+    # user.password_hash = pwd_context.hash(newPassword)
+    # await db.commit()
 
-    # 產生驗證用 token
-
-    # 假設你有一個專門處理忘記密碼重設的連結
-    # reset_url = f"https://your-site.com/auth/reset-password?token={token}"
-
-    # optional: 紀錄 fingerprint / log...
-    # save_fingerprint_log(email, payload.fingerprint)
+    return {"message": "密碼已成功重設"}
