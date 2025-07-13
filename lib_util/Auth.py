@@ -6,14 +6,19 @@ from fastapi import Request
 from fastapi.security import OAuth2, OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from lib_db.db.database import get_db
+from lib_db.db.database import get_async_db
+from lib_sql.sql_loader_singleton import get_sql_loader
+from lib_sql.SQLQueryExecutor import SQLQueryExecutor
 from lib_db.models.User import User
 from app.config import settings
 import logging
 
 SECRET_KEY = settings.JWT_SECRET_KEY
 ALGORITHM = "HS256"
-
+sql_loader = get_sql_loader()  # SQL 字典
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/Login")  # 對應你的登入路由
 
 
@@ -63,9 +68,9 @@ class OptionalOAuth2PasswordBearer(OAuth2PasswordBearer):
 oauth2_scheme_optional = OptionalOAuth2PasswordBearer(tokenUrl="auth/LoginOptional")
 
 
-# 依賴注入驗證使用者是否有效
-def get_current_user(
-    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
+# 依賴注入驗證使用者是否有效 2025-07-13 改成非同步
+async def get_current_user(
+    token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_async_db)
 ) -> User:
     print("get_current_user")
     credentials_exception = HTTPException(
@@ -90,8 +95,9 @@ def get_current_user(
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-
-    user = db.query(User).filter(User.id == user_id).first()
+    executor = SQLQueryExecutor(sql_loader, db)
+    params = {"id": int(user_id)}
+    user = await executor.execute("SELECT_USERS_BY_ID", params)
     if user is None:
         raise credentials_exception
     return user

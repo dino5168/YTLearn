@@ -58,3 +58,30 @@ UPDATE_USERS_USER_PASSWORD: |
   update users
   set password_hash = :password_hash
   where email = :email
+
+#查詢所有選單
+SELECT_ALL_MENU: |
+  SELECT 
+    ni.id,
+    ni.label,
+    ni.href,
+    '0' AS type, 
+    ni.sort_order,
+    COALESCE(
+      json_agg(
+        json_build_object(
+          'id', nd.id,
+          'label', nd.label,
+          'href', nd.href,
+          'type', '1',
+          'nav_item_id', nd.nav_item_id,
+          'sort_order', nd.sort_order
+        ) ORDER BY nd.sort_order
+      ) FILTER (WHERE nd.id IS NOT NULL),
+      '[]'
+    ) AS dropdown
+  FROM nav_items ni
+  LEFT JOIN nav_dropdowns nd
+    ON nd.nav_item_id = ni.id
+  GROUP BY ni.id, ni.label, ni.href, ni.sort_order
+  ORDER BY ni.sort_order;

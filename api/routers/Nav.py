@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import asc
@@ -185,6 +186,7 @@ def get_nav_links_simple(db: Session = Depends(get_db)):
 
 
 # 更新主選單
+# 更新主選單
 @nav_router.put("/updateNav0/{item_id}", response_model=NavItemRead)
 def update_nav_item(
     item_id: int,
@@ -269,30 +271,16 @@ async def create_nav_item(
     current_user: User = Depends(get_current_user),
 ):
     # body = await request.json()
-
     try:
         body = await request.json()
-        print(f"Body: {body}")
-
-        sql = sql_loader.get_sql("INSERT_NAV_ITEMS")
-        print(f"SQL: {sql}")
-        print(f"SQL type: {type(sql)}")
-        print(f"SQLQueryExecutor type: {type(SQLQueryExecutor)}")
-        print(f"SQLQueryExecutor: {SQLQueryExecutor}")
-
         executor = SQLQueryExecutor(sql_loader, db)
-        print(f"Executor created: {type(executor)}")
-
-        # This is likely where the error occurs
         result = await executor.execute(
             "INSERT_NAV_ITEMS", body
         )  # 增加主選單 取得 inserted_id : result.inserted_id
-        print(f"Result: {result}")
         # 增加到
-
+        return result
     except Exception as e:
-        print(f"🔥 Error at line: {e.__traceback__.tb_lineno}")
-        print(f"🔥 Error: {e}")
+
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -317,32 +305,41 @@ def create_nav_item(
     return db_item
 
 
-# current_user: User = Depends(get_current_user),
+# 刪除主選單
 @nav_router.delete("/deleteNav0/{item_id}", response_model=NavItemRead)
 def delete_nav_item(
     item_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    print("deleteNav0")
-    print(item_id)
     db_item = db.query(NavItem).filter(NavItem.id == item_id).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="NavItem not found")
-
     db.delete(db_item)
     db.commit()
-
     return db_item  # 回傳被刪除的資料
 
 
-# 刪除子選單 current_user: User = Depends(get_current_user),
+# 刪除子選單 current_user: User = Depends(get_current_user), 正常運作就不要改了
 @nav_router.delete("/deleteNav1/{item_id}", response_model=NavDropdownRead)
-def delete_nav_item(
+async def delete_nav_item(
     item_id: int,
     nav_item_create: NavDropdownCreate,
     db: Session = Depends(get_db),
+    dbasync: Session = Depends(get_async_db),
+    current_user: User = Depends(get_current_user),
 ):
-    print("deleteNav1")
+    # print(current_user)
+    # print("deleteNav1")
+    # print(item_id)
+    # print(nav_item_create.nav_item_id)
+    # sql = sql_loader.get_sql("SELECT_NAV_DROPDOWNS_NAVID_ID")
+    # print(sql)
+    # parms = {"nav_item_id": int(nav_item_create.nav_item_id), "id": int(item_id)}
+    # executor = SQLQueryExecutor(sql_loader, dbasync)
+    # rs = await executor.execute("SELECT_NAV_DROPDOWNS_NAVID_ID", parms)
+    # print(rs)
+
     db_item = (
         db.query(NavDropdown)
         .filter(
@@ -392,13 +389,14 @@ def getNavLinksByRoleID(db, role_id):
     return nav_items
 
 
+# 取得 menu 預設角色為 6
 @nav_router.get("/links")
 def get_nav_links(
     db: Session = Depends(get_db), current_user: User = Depends(get_optional_user)
 ):  # 改用 get_db 而非 get_async_db
     logger.info("使用純 SQL 查詢 nav_items + nav_dropdowns")
     try:
-        logger.info("取得目前使用者的角色")
+
         role_id = 6
         if current_user is not None:
             role_id = current_user.role_id
@@ -407,7 +405,7 @@ def get_nav_links(
         logger.info(role_id)
         nav_items = []
         nav_items = getNavLinksByRoleID(db, role_id)
-        # print(nav_items)
+
         return nav_items
 
     except SQLAlchemyError as e:
@@ -443,6 +441,7 @@ def mark_selected(nav_items_all, nav_items_selected):
     return nav_items_all
 
 
+# 使用角色取得 menu
 @nav_router.get("/qyerLinkbyRoleId/{role_id}")
 async def get_nav_links(
     role_id: int,  # 👈 這樣 Swagger 才會出現輸入欄位
@@ -451,7 +450,7 @@ async def get_nav_links(
 ):  # 改用 get_db 而非 get_async_db
     """使用Role_id 查詢 Menu"""
     try:
-        logger.info("取得目前使用者的角色")
+        logger.info("取得目前使用者的角色", "SELECT_ALL_MENU")
         #
         executor = SQLQueryExecutor(sql_loader, dbasync)
         result = await executor.execute("SELECT_ALL_MENU")
@@ -459,9 +458,6 @@ async def get_nav_links(
         role_id = role_id
         nav_items = []
         nav_items = getNavLinksByRoleID(db, role_id)
-        print(f"Role ID: {role_id}")
-
-        print(nav_items)
         # 標註是否選取
         nav_items_all = mark_selected(result, nav_items)
         return nav_items_all
@@ -482,7 +478,6 @@ async def get_allmenus(
     try:
         executor = SQLQueryExecutor(sql_loader, db)
         result = await executor.execute("SELECT_ALL_MENU")
-        print(f"Result: {result}")
         # 增加到
         return result
 

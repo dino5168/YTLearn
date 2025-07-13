@@ -6,3 +6,7 @@ COMBo_ROLE_LIST: |
 
 CODES_CATGORY_LIST: |
   SELECT category_id AS value, category_name AS label FROM code_categories;
+
+#樣品 MP3
+CODES_SAMPLE_VOICE_LIST: |
+  select code_value as value ,code_name as label from codes where category_id = 13
