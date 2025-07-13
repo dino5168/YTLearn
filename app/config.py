@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     EMAIL_FROM: str = ""  # 郵件發件人地址
     EMAIL_VERIFY_DOMAIN: str = "http://localhost:3000"  # 替換為你的域名
     ADMIN_EMAIL: str
+    #
+    STORY_DIR: Path = "c:/ytdb/story"
+    STORY_URL: str
 
     class Config:
         env_file = ".env"  # 指定 .env 檔案路徑

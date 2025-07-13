@@ -20,9 +20,14 @@ SAMPLE_VOICE_URL = settings.SAMPLE_VOICE_URL
 # 確保樣本語音目錄存在
 # http://localhost:8000/sample_voice/02_William.mp3
 
+STORY_URL = settings.STORY_URL
+STORY_DIR = settings.STORY_DIR
+
 
 def mount_static(app: FastAPI):
     """掛載 thumbnails 與 srt 靜態目錄到 FastAPI app"""
+    if not STORY_DIR.exists():
+        raise RuntimeError(f"📁 STORY_DIR 路徑不存在: {STORY_DIR}")
     app.mount(
         THUMBNAILS_URL_PATH, StaticFiles(directory=THUMBNAILS_DIR), name="thumbnails"
     )
@@ -32,3 +37,8 @@ def mount_static(app: FastAPI):
         StaticFiles(directory=SAMPLE_VOICE_DIR),
         name="sample_voice",
     )  # 掛載樣本語音目錄
+    app.mount(
+        STORY_URL,
+        StaticFiles(directory=STORY_DIR),
+        name="story",
+    )
