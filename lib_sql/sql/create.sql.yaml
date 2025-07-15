@@ -19,3 +19,7 @@ INSERT_CODE_CATEGORIES: |
 INSERT_CODES: |
   INSERT INTO codes (category_id, code_value, code_name, description, sort_order,parent_code_id) 
   VALUES ( :category_id, :code_value, :code_name, :description, :sort_order,:parent_code_id) RETURNING code_id;
+#新增上傳資料檔
+INSERT_USER_UPLOAD_RECORDER: |
+  INSERT INTO user_upload_recorder (user_id, file_name, file_path)
+  VALUES (:user_id, :file_name, :file_path) RETURNING id;

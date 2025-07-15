@@ -20,6 +20,8 @@ from api.routers.db_delete import db_delete_router
 from api.routers.query import query_router
 from api.routers.create import create_router
 from api.routers.db_update import db_update_router
+from api.routers.markdown import markdown_router
+from api.routers.Note import note_router
 
 # 這個會很耗資源 先 mark 起來
 # from api.routers.Transcribe import transcribe_router
@@ -61,9 +63,13 @@ app.include_router(common_router)
 app.include_router(db_create_router)
 app.include_router(db_update_router)
 app.include_router(db_delete_router)
+# mark down
+app.include_router(markdown_router)
 
 app.include_router(query_router)
 app.include_router(create_router)
+# note
+app.include_router(note_router)
 # 這個會很耗資源 先 mark 起來
 # app.include_router(transcribe_router)
 

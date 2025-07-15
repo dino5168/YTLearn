@@ -9,4 +9,4 @@ CODES_CATGORY_LIST: |
 
 #樣品 MP3
 CODES_SAMPLE_VOICE_LIST: |
-  select code_value as value ,code_name as label from codes where category_id = 13
+  select code_value as value ,code_name as label from codes where category_id = 13 order by code_value desc

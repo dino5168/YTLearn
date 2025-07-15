@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     #
     STORY_DIR: Path = "c:/ytdb/story"
     STORY_URL: str
+    #
+    MARK_DOWN_DIR: Path = "c:/ytdb/markdown"
+    #
+    USERS_DATA_DIR: Path
 
     class Config:
         env_file = ".env"  # 指定 .env 檔案路徑

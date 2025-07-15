@@ -72,12 +72,13 @@ oauth2_scheme_optional = OptionalOAuth2PasswordBearer(tokenUrl="auth/LoginOption
 async def get_current_user(
     token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_async_db)
 ) -> User:
-    print("get_current_user")
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="無法驗證身份",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
     try:
         payload = jwt.decode(
             token,
@@ -91,6 +92,7 @@ async def get_current_user(
             },
         )
         user_id: int = payload.get("sub")
+
         if user_id is None:
             raise credentials_exception
     except JWTError:
@@ -98,9 +100,11 @@ async def get_current_user(
     executor = SQLQueryExecutor(sql_loader, db)
     params = {"id": int(user_id)}
     user = await executor.execute("SELECT_USERS_BY_ID", params)
+
     if user is None:
         raise credentials_exception
-    return user
+
+    return user[0]
 
 
 # 👤 可選登入：驗證失敗時回傳 None

@@ -18,7 +18,7 @@ UPLOAD_DIR = settings.UPLOAD_DIR
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
-@voice_recorder_router.post("/recorder")
+@voice_recorder_router.post("/recorder_")
 async def upload_voice(file: UploadFile = File(...)):
     try:
         print("Received file:")

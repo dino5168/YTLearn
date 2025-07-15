@@ -49,7 +49,7 @@ async def generate_story_from_text_file(text_file: str):
 
     temp_files = []
     for idx, sentence in enumerate(sentences):
-        path = await generate_voice_file(sentence, VOICE, idx, OUTPUT_DIR)
+        path = await generate_voice_file(sentence, VOICE, idx + 1, OUTPUT_DIR)
         temp_files.append((path, sentence))
 
     # 合併 mp3，建立 srt
