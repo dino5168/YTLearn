@@ -10,7 +10,7 @@ class StoryVoiceGenerator:
     def __init__(
         self,
         voice: str = "en-US-JennyNeural",
-        output_dir: Path = Path("c:/temp/0715"),
+        output_dir: Path = Path("c:/temp"),
         output_mp3: str = "note.mp3",
         output_srt: str = "note.srt",
         silence_ms: int = 300,
@@ -76,6 +76,8 @@ class StoryVoiceGenerator:
         with open(self.output_srt, "w", encoding="utf-8") as f:
             f.write("\n".join(srt_entries))
         print(f"✅ 字幕檔輸出: {self.output_srt.resolve()}")
+
+        return {"mp3": str(self.output_mp3), "srt": str(self.output_srt)}
 
     async def generate_story_from_text_file(self, text_file: str):
         with open(text_file, "r", encoding="utf-8") as f:

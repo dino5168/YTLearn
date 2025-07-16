@@ -1,3 +1,4 @@
+# 翻譯英文字幕
 import pysrt
 from googletrans import Translator
 import os

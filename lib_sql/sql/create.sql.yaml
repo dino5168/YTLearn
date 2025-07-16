@@ -23,3 +23,8 @@ INSERT_CODES: |
 INSERT_USER_UPLOAD_RECORDER: |
   INSERT INTO user_upload_recorder (user_id, file_name, file_path)
   VALUES (:user_id, :file_name, :file_path) RETURNING id;
+
+#新增 Note TTS 資料檔
+INSERT_USER_TTS_RECORDS: |
+  INSERT INTO public.user_tts_records (user_id,voice_id,voice_title,file_name,file_path,srt_path,zh_srt_path ) 
+  VALUES ( :user_id,:voice_id,:voice_title,:file_name,:file_path,:srt_path,:zh_srt_path) RETURNING id;
