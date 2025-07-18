@@ -393,7 +393,7 @@ async def generate_tts(
         }
 
         params = {k: str(v) if isinstance(v, Path) else v for k, v in params.items()}
-        print(params)
+        # print(params)
         result = await executor.execute(sql_key, params)
         return {
             "status": "success",

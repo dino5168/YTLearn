@@ -1,15 +1,29 @@
+from pathlib import Path
 from fastapi import APIRouter, FastAPI, File, UploadFile, Form, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 from fastapi import Request
+from app.config import settings
+
+# 資料庫操作
+from lib_db.db.database import get_async_db
+from sqlalchemy.ext.asyncio import AsyncSession
+from lib_sql.SQLQueryExecutor import SQLQueryExecutor
+
+from lib_sql.sql_loader_singleton import get_sql_loader
+from lib_util.Auth import get_current_user  # Import the dependency
+from lib_db.models.User import User
+from lib_util.utils import format_user_id
+
 import json
 import os
 import shutil
 from datetime import datetime
 import uuid
 import logging
+
 
 # 設定日誌
 logging.basicConfig(level=logging.INFO)
@@ -36,15 +50,16 @@ class VoiceDataResponse(BaseModel):
 
 
 # 設定檔案儲存路徑
-UPLOAD_DIR = "c:/temp/0717"
-IMAGE_DIR = os.path.join(UPLOAD_DIR, "data")
-DATA_DIR = os.path.join(UPLOAD_DIR, "data")
+MP4_UPLOAD_DIR = os.path.join(settings.USERS_DATA_DIR, "MP4")
+
+DATA_DIR = os.path.join(MP4_UPLOAD_DIR, "data")
 
 # 創建必要的目錄
-os.makedirs(IMAGE_DIR, exist_ok=True)
+
 os.makedirs(DATA_DIR, exist_ok=True)
 
 
+# 儲存上傳的 Image 檔案
 def save_uploaded_file(file: UploadFile, destination: str) -> str:
     """儲存上傳的檔案"""
     try:
@@ -74,13 +89,38 @@ from starlette.datastructures import UploadFile as StarletteUploadFile
 
 
 @mp4_router.post("/voice-data", response_model=VoiceDataResponse)
-async def receive_voice_data(request: Request):
+async def receive_voice_data(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_user),
+):
     """
     接收語音資料和圖片檔案
     """
+
+    # 假設 current_user 是字典，含有 user 的 ID
+    user_id = current_user["id"]
+
+    # 格式化 user_id，例如補零變成 '000123'
+    formatId = format_user_id(user_id)
+
+    # 建立使用者專屬目錄路徑
+    current_user_path = Path(MP4_UPLOAD_DIR) / formatId
+
+    # 加入 timestamp 子資料夾
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    current_user_path = current_user_path / timestamp  # Path 物件可直接使用 /
+
+    # 印出即將建立的路徑
+    print(current_user_path)
+
+    # 建立資料夾（包含父層目錄）
+    os.makedirs(current_user_path, exist_ok=True)
+
     form = await request.form()
     print("=============form==============")
     print(form)
+    # user.role_id
 
     # 取得 JSON payload
     data = form.get("data")
@@ -128,7 +168,7 @@ async def receive_voice_data(request: Request):
             unique_id = str(uuid.uuid4())[:8]
             new_filename = f"{timestamp}_{unique_id}{file_extension}"
 
-            file_path = os.path.join(IMAGE_DIR, new_filename)
+            file_path = os.path.join(current_user_path, new_filename)
             print(file_path)
             save_uploaded_file(upload_file, file_path)
 
@@ -139,20 +179,24 @@ async def receive_voice_data(request: Request):
                 "file_size": upload_file.size,
             }
         else:
-            print("here")
+            print("if this line here display then have errors")
 
     # 更新 JSON 的 imageName
     for item in validated_data:
         if item.hasImage and item.imageName in saved_files:
             item.imageName = saved_files[item.imageName]["saved_name"]
 
-    # 儲存 JSON
+    # 儲存 JSON : 文字檔
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    json_filename = f"voice_data_{timestamp}.json"
-    with open(os.path.join(DATA_DIR, json_filename), "w", encoding="utf-8") as f:
+    json_filename = f"{timestamp}.json"
+    with open(
+        os.path.join(current_user_path, json_filename), "w", encoding="utf-8"
+    ) as f:
         json.dump(
             [item.dict() for item in validated_data], f, ensure_ascii=False, indent=2
         )
+
+    # 資料上傳成功 新增資料到資料庫
 
     return VoiceDataResponse(
         success=True,

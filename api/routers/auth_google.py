@@ -127,7 +127,7 @@ def google_callback(request: Request, db: Session = Depends(get_db)):
         if not email:
             raise HTTPException(status_code=400, detail="No email in token")
 
-        #google email 是否認證
+        # google email 是否認證
         email_verified = idinfo.get("email_verified")
         # email 是否認證
         if not email_verified:
