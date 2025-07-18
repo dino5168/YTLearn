@@ -190,6 +190,7 @@ def google_callback(request: Request, db: Session = Depends(get_db)):
             status_code=400, detail=f"Failed to exchange code for token: {str(e)}"
         )
     except Exception as e:
+        print(e)
         print("erorr 02")
         raise HTTPException(status_code=500, detail=f"Authentication failed: {str(e)}")
 
