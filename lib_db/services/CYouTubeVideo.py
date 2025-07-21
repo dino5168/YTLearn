@@ -30,6 +30,7 @@ class YouTubeVideo:
         }
         with YoutubeDL(ydl_opts) as ydl:
             self.info = ydl.extract_info(self.url, download=False)
+
         return self.info
 
     # 顯示基本影片資訊，如標題、ID、上傳者、觀看次數、縮圖網址等 有處理影片長度的格式化（轉成 hh:mm:ss）。
@@ -45,6 +46,7 @@ class YouTubeVideo:
         print(f"影片網址: {self.info['webpage_url']}")
         print(f"封面圖: {self.get_thumbnail_url()}")
         print(f"影片格式: {self.info['ext']}")
+        print(f"影片類別: {self.info.get('category', '無')}")
         duration = self.info.get("duration")
         if duration:
             hours = duration // 3600

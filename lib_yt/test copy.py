@@ -2,7 +2,7 @@ from Whisper.FasterWhisperTranscriber import FasterWhisperTranscriber
 from YTHandler.YouTubeHandler import YouTubeHandler
 import re
 import os
-from datetime import date, timedelta
+from datetime import timedelta
 from YTTrans import process_srt
 import asyncio
 from sqlalchemy import text
@@ -90,46 +90,59 @@ def merge_srt_to_sentence_srt(input_srt_path: str, output_srt_path: str):
     print(f"[輸出完成] 新的合併字幕已寫入：{output_srt_path}")
 
 
-async def insert_video(session: AsyncSession, video_data: dict):
-    sql = text(
-        """
-        INSERT INTO public.videos (
-            id, title, uploader, upload_date, view_count,
-            video_url, thumbnail_url, local_thumbnail_path,
-            format, duration, user_id, lan, category
-        ) VALUES (
-            :id, :title, :uploader, :upload_date, :view_count,
-            :video_url, :thumbnail_url, :local_thumbnail_path,
-            :format, :duration, :user_id, :lan, :category
-        );
-    """
-    )
-    await session.execute(sql, video_data)
-    await session.commit()
-
-
-async def insert_ytinfo(video_info):
-
+async def insert_ytinfo():
     async with AsyncSessionLocal() as session:
-        await insert_video(session, video_info)
+        # ✅ 查詢資料
+        result = await session.execute(text("SELECT id, name, email FROM users"))
+
+        # ✅ 使用 result.mappings() 取得 dict-like 結果（推薦）
+        for row in result.mappings():
+            print(f"查詢結果: {row['id']}, {row['name']}, {row['email']}")
 
 
 async def main():
-    url = "https://www.youtube.com/watch?v=tsubN-PVh6w&ab_channel=Miniatures%E2%80%99Planet"
-    output_dir = "c:/temp/0721/"
+
+    await insert_ytinfo()
+    url = input("請輸入 YouTube 影片網址: ")
+    output_dir = input("請輸入儲存資料夾路徑 (預設 C:/temp): ") or "C:/temp"
 
     try:
         handler = YouTubeHandler(url, output_dir)
+
+        # 方法1: 分別執行
+        # video_info = handler.fetch_video_info()
+        # output_vedio_path = os.path.join(output_dir,video_info.category,video_info.video_id)
+        # os.makedirs(output_vedio_path,exist_ok=True)
+        # audio_path = handler.download_audio()
+        # thumbnail_path = handler.download_thumbnail()
+
+        # 方法2: 一次性處理
         video_info, audio_path, thumbnail_path = handler.process_video()
+
+        print(f"\n✨ 處理結果:")
+        # print(f"📄 影片資訊: {video_info.title}")
+        # print(f"🎵 音訊檔案: {audio_path}")
+        # print(f"🖼 封面圖片: {thumbnail_path}")
+
     except Exception as e:
         print(f"💥 發生錯誤: {e}")
-        #
-        #
+    #
+    #
+    base_path = "c:/temp/0721"
+    output_path = f"{base_path}/{video_info.category}/{video_info.video_id}"
+    mp3_file_name = f"{output_path}/{video_info.video_id}.mp3"
+    srt_file_name = f"{output_path}/{video_info.video_id}.srt"
+    srt_en_file_name = f"{output_path}/{video_info.video_id}.en.srt"
+    # 翻譯好的 字幕檔。
+    srt_2_file_name = f"{output_path}/{video_info.video_id}.2.srt"
+    trans = FasterWhisperTranscriber()
+    trans_result = trans.transcribe_to_srt(mp3_file_name, srt_file_name)
+    print(trans_result)
 
-    print(video_info)
-    video_info.user_id = 1
-
-    await insert_ytinfo(video_info)
+    merge_srt_to_sentence_srt(srt_file_name, srt_en_file_name)
+    # 翻譯
+    process_srt(srt_file_name, srt_2_file_name, "zh-TW")
+    # 將資料寫入資料庫
 
 
 if __name__ == "__main__":

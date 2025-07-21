@@ -1,9 +1,9 @@
-from Whisper.FasterWhisperTranscriber import FasterWhisperTranscriber
-from YTHandler.YouTubeHandler import YouTubeHandler
+from lib_yt.Whisper.FasterWhisperTranscriber import FasterWhisperTranscriber
+from lib_yt.YTHandler.YouTubeHandler import YouTubeHandler
 import re
 import os
 from datetime import date, timedelta
-from YTTrans import process_srt
+from lib_yt.YTTrans import process_srt
 import asyncio
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession

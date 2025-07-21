@@ -1,8 +1,22 @@
-from sqlalchemy import Column, Date, Integer, String, Text
-from lib_db.db.database import Base
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Text,
+    Boolean,
+    DateTime,
+    Date,
+    Numeric,
+    Float,
+    BigInteger,
+    func,
+)
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
 
 
-class Video(Base):
+class Videos(Base):
     __tablename__ = "videos"
     id = Column(Text, primary_key=True, index=True)  # 影片ID
     title = Column(Text, nullable=True)  # 影片標題

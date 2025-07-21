@@ -1,26 +1,6 @@
-from Whisper.FasterWhisperTranscriber import FasterWhisperTranscriber
-from YTHandler.YouTubeHandler import YouTubeHandler
+# 重新整理 字幕檔
 import re
-import os
-from datetime import date, timedelta
-from YTTrans import process_srt
-import asyncio
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
-
-# ✅ 連線設定（注意：要用 asyncpg driver）
-DB_CONNECT_STRING = "postgresql+asyncpg://postgres:0936284791@localhost:5432/videos"
-
-# ✅ 建立 async engine
-engine = create_async_engine(DB_CONNECT_STRING, echo=True)
-
-# ✅ 建立 Session factory
-AsyncSessionLocal = sessionmaker(
-    bind=engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-)
+from datetime import timedelta
 
 
 def parse_timestamp(timestamp: str) -> float:
@@ -90,48 +70,6 @@ def merge_srt_to_sentence_srt(input_srt_path: str, output_srt_path: str):
     print(f"[輸出完成] 新的合併字幕已寫入：{output_srt_path}")
 
 
-async def insert_video(session: AsyncSession, video_data: dict):
-    sql = text(
-        """
-        INSERT INTO public.videos (
-            id, title, uploader, upload_date, view_count,
-            video_url, thumbnail_url, local_thumbnail_path,
-            format, duration, user_id, lan, category
-        ) VALUES (
-            :id, :title, :uploader, :upload_date, :view_count,
-            :video_url, :thumbnail_url, :local_thumbnail_path,
-            :format, :duration, :user_id, :lan, :category
-        );
-    """
-    )
-    await session.execute(sql, video_data)
-    await session.commit()
-
-
-async def insert_ytinfo(video_info):
-
-    async with AsyncSessionLocal() as session:
-        await insert_video(session, video_info)
-
-
-async def main():
-    url = "https://www.youtube.com/watch?v=tsubN-PVh6w&ab_channel=Miniatures%E2%80%99Planet"
-    output_dir = "c:/temp/0721/"
-
-    try:
-        handler = YouTubeHandler(url, output_dir)
-        video_info, audio_path, thumbnail_path = handler.process_video()
-    except Exception as e:
-        print(f"💥 發生錯誤: {e}")
-        #
-        #
-
-    print(video_info)
-    video_info.user_id = 1
-
-    await insert_ytinfo(video_info)
-
-
 if __name__ == "__main__":
-    asyncio.run(main())
-    # 將結果 寫入資料庫
+    srt = merge_srt_to_sentence_srt(r"c:/temp/0719/1.srt", r"c:/temp/0719/1_m.srt")
+    print(srt)
