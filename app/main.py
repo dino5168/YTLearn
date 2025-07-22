@@ -1,7 +1,7 @@
 # main.py
 import logging
 from fastapi import FastAPI, Depends, HTTPException, APIRouter
-from api.video.routes import router as video_router  # 匯入你的子路由
+from api.routers.videos import router as video_router  # 匯入你的子路由
 from api.routers.Subtitle import subtitle_router  # 匯入你的子路由
 from api.routers.Admin import admin_router
 from api.routers.Voice import voice_router

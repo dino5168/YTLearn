@@ -13,6 +13,7 @@ from lib_srt.CSrt2DB import CSrt2DB
 from lib_util.Auth import get_current_user
 from lib_yt.Whisper import FasterWhisperTranscriber
 from lib_yt.YTHandler.YTInfo import fetch_info, save_video_to_db, query_video_byid
+from lib_yt.YTHandler.refine_srt_sentences import refine
 
 # 讀取設定檔
 from app.config import settings
@@ -65,9 +66,12 @@ async def download_video(
     await download_thumbnail_from_info(info, output_dir)
     # 產生字幕
     mp3_file_name = f"{output_dir}/{video_id}.mp3"
+    # mp3_source_srt = f"{output_dir}/{video_id}.0.srt"
     srt_file_name = f"{output_dir}/{video_id}.srt"
 
     await transcribe_mp3_to_srt(mp3_file_name, srt_file_name)
+    # 調整字幕
+    # refine(mp3_source_srt, srt_file_name)
     # 產生翻譯字幕
     srt_2_file_name = f"{output_dir}/{video_id}.2.srt"
 

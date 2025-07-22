@@ -233,8 +233,9 @@ def format_timestamp(seconds: float) -> str:
     return f"{h:02}:{m:02}:{s:02},{ms:03}"
 
 
+# medium
 async def transcribe_mp3_to_srt(
-    mp3_path: str, output_srt_path: str, model_size="medium"
+    mp3_path: str, output_srt_path: str, model_size="small"
 ) -> dict:
     """使用 FasterWhisper 將 MP3 轉為 SRT 字幕"""
     device = "cuda" if torch.cuda.is_available() else "cpu"
